@@ -1,0 +1,19 @@
+{
+  "name": "daily-news-digest",
+  "version": "1.0.0",
+  "description": "Daily news digest generator powered by Claude AI",
+  "main": "digest.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node digest.js",
+    "test": "node digest.js --topic \"Artificial Intelligence\" --dry",
+    "setup": "node setup.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "nodemailer": "latest"
+  }
+}
