@@ -2,18 +2,25 @@
   "name": "daily-news-digest",
   "version": "1.0.0",
   "description": "Daily news digest generator powered by Claude AI",
-  "main": "digest.js",
+  "main": "digest.ts",
   "type": "module",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "start": "node digest.js",
-    "test": "node digest.js --topic \"Artificial Intelligence\" --dry",
-    "setup": "node setup.js"
+    "start": "npx tsx digest.ts",
+    "test": "npx tsx digest.ts --topic \"Artificial Intelligence\" --dry",
+    "setup": "npx tsx setup.ts",
+    "build": "tsc --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
     "nodemailer": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/nodemailer": "^8.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
   }
 }

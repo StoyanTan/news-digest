@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * @file scheduler.js
+ * @file scheduler.ts
  * @description Local task scheduler for the Daily News Digest.
- * Runs digest.js at a configured daily time without requiring cron.
+ * Runs digest.ts at a configured daily time without requiring cron.
  * Useful on Windows or when cron is not available.
  *
  * Usage:
- *   node scheduler.js
- *   node scheduler.js --run-now   # also run immediately on start
+ *   npx tsx scheduler.ts
+ *   npx tsx scheduler.ts --run-now   # also run immediately on start
  *
  * Configuration via environment variables (or .env file):
  *   SCHEDULE_HOUR      - Hour to run (0–23), default: 8
@@ -16,16 +16,34 @@
  *   MESSENGER          - Delivery method (telegram/discord/email/none)
  */
 
-import { spawn } from 'child_process';
+import { spawn, SpawnOptions } from 'child_process';
 import { appendFileSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { parseArgs } from 'util';
 
 // ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface SchedulerConfig {
+  hour: number;
+  minute: number;
+  topic: string;
+  messenger: string;
+  runNow: boolean;
+  logFile: string;
+}
+
+interface SchedulerCliArgs {
+  'run-now': boolean;
+  help: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Env loader
 // ---------------------------------------------------------------------------
 
-function loadEnv() {
+function loadEnv(): void {
   const envPath = join(process.cwd(), '.env');
   if (!existsSync(envPath)) return;
   for (const line of readFileSync(envPath, 'utf8').split('\n')) {
@@ -42,7 +60,7 @@ function loadEnv() {
 loadEnv();
 
 // ---------------------------------------------------------------------------
-// Config
+// CLI
 // ---------------------------------------------------------------------------
 
 const { values: args } = parseArgs({
@@ -51,18 +69,18 @@ const { values: args } = parseArgs({
     help:      { type: 'boolean', short: 'h', default: false },
   },
   strict: false,
-});
+}) as { values: SchedulerCliArgs };
 
 if (args.help) {
   console.log(`
 Daily News Digest – Scheduler
 
 Usage:
-  node scheduler.js [--run-now]
+  npx tsx scheduler.ts [--run-now]
 
 Options:
   --run-now   Also run the digest immediately on start
-  --help      Show this help
+  --help, -h  Show this help
 
 Environment variables:
   SCHEDULE_HOUR    Hour to run (0–23), default 8
@@ -73,27 +91,29 @@ Environment variables:
   process.exit(0);
 }
 
-const SCHEDULE_HOUR   = parseInt(process.env.SCHEDULE_HOUR   || '8',  10);
-const SCHEDULE_MINUTE = parseInt(process.env.SCHEDULE_MINUTE || '0',  10);
-const TOPIC           = process.env.NEWS_TOPIC   || 'Technology';
-const MESSENGER       = process.env.MESSENGER    || 'none';
-const LOG_FILE        = join(process.cwd(), 'digest-schedule.log');
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
+const config: SchedulerConfig = {
+  hour:      parseInt(process.env.SCHEDULE_HOUR   || '8', 10),
+  minute:    parseInt(process.env.SCHEDULE_MINUTE || '0', 10),
+  topic:     process.env.NEWS_TOPIC  || 'Technology',
+  messenger: process.env.MESSENGER   || 'none',
+  runNow:    args['run-now'],
+  logFile:   join(process.cwd(), 'digest-schedule.log'),
+};
 
 // ---------------------------------------------------------------------------
 // Logging
 // ---------------------------------------------------------------------------
 
-/**
- * Writes a timestamped message to both the console and the log file.
- *
- * @param {string} message - The message to log.
- */
-function log(message) {
-  const ts = new Date().toISOString();
+function log(message: string): void {
+  const ts: string = new Date().toISOString();
   const line = `[${ts}] ${message}`;
   console.log(line);
   try {
-    appendFileSync(LOG_FILE, line + '\n', 'utf8');
+    appendFileSync(config.logFile, line + '\n', 'utf8');
   } catch (_) {
     // Non-fatal: log file write failure should not crash the scheduler.
   }
@@ -105,12 +125,7 @@ function log(message) {
 
 let isRunning = false;
 
-/**
- * Spawns digest.js as a child process and logs its output.
- *
- * @returns {Promise<void>} Resolves when the digest process exits.
- */
-function runDigest() {
+function runDigest(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (isRunning) {
       log('⚠️   Digest already running – skipping duplicate invocation.');
@@ -119,41 +134,50 @@ function runDigest() {
     }
 
     isRunning = true;
-    log(`▶   Running digest | topic="${TOPIC}" | messenger="${MESSENGER}"`);
+    log(`▶   Running digest | topic="${config.topic}" | messenger="${config.messenger}"`);
 
-    const child = spawn(
-      process.execPath,
-      ['digest.js', '--topic', TOPIC, '--messenger', MESSENGER],
-      { cwd: process.cwd(), env: process.env, stdio: ['ignore', 'pipe', 'pipe'] }
-    );
+    const spawnArgs: string[] = [
+      '--import', 'tsx/esm',
+      'digest.ts',
+      '--topic', config.topic,
+      '--messenger', config.messenger,
+    ];
 
-    child.stdout.on('data', data => {
+    const spawnOptions: SpawnOptions = {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    };
+
+    const child = spawn(process.execPath, spawnArgs, spawnOptions);
+
+    (child.stdout as NodeJS.ReadableStream).on('data', (data: Buffer) => {
       for (const line of data.toString().split('\n')) {
         if (line.trim()) log(`    ${line}`);
       }
     });
 
-    child.stderr.on('data', data => {
+    (child.stderr as NodeJS.ReadableStream).on('data', (data: Buffer) => {
       for (const line of data.toString().split('\n')) {
         if (line.trim()) log(`    ERR ${line}`);
       }
     });
 
-    child.on('close', code => {
+    child.on('close', (code: number | null) => {
       isRunning = false;
       if (code === 0) {
-        log(`✅  Digest completed successfully.`);
+        log('✅  Digest completed successfully.');
         resolve();
       } else {
-        const err = new Error(`digest.js exited with code ${code}`);
+        const err = new Error(`digest.ts exited with code ${code}`);
         log(`❌  Digest failed: ${err.message}`);
         reject(err);
       }
     });
 
-    child.on('error', err => {
+    child.on('error', (err: Error) => {
       isRunning = false;
-      log(`❌  Failed to start digest.js: ${err.message}`);
+      log(`❌  Failed to start digest.ts: ${err.message}`);
       reject(err);
     });
   });
@@ -163,26 +187,15 @@ function runDigest() {
 // Scheduling loop
 // ---------------------------------------------------------------------------
 
-/**
- * Returns the number of milliseconds until the next scheduled run.
- *
- * @returns {number}
- */
-function msUntilNextRun() {
+function msUntilNextRun(): number {
   const now = new Date();
   const next = new Date(now);
-  next.setHours(SCHEDULE_HOUR, SCHEDULE_MINUTE, 0, 0);
+  next.setHours(config.hour, config.minute, 0, 0);
   if (next <= now) next.setDate(next.getDate() + 1);
   return next.getTime() - now.getTime();
 }
 
-/**
- * Formats milliseconds into a human-readable string like "7h 42m".
- *
- * @param {number} ms - Milliseconds.
- * @returns {string}
- */
-function formatMs(ms) {
+function formatMs(ms: number): string {
   const totalMin = Math.round(ms / 60000);
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
@@ -195,34 +208,30 @@ function formatMs(ms) {
 // ---------------------------------------------------------------------------
 
 log('━'.repeat(50));
-log(`📅  Daily News Digest Scheduler started`);
-log(`    Topic      : ${TOPIC}`);
-log(`    Delivery   : ${MESSENGER}`);
-log(`    Runs daily : ${String(SCHEDULE_HOUR).padStart(2, '0')}:${String(SCHEDULE_MINUTE).padStart(2, '0')}`);
-log(`    Log file   : ${LOG_FILE}`);
+log('📅  Daily News Digest Scheduler started');
+log(`    Topic      : ${config.topic}`);
+log(`    Delivery   : ${config.messenger}`);
+log(`    Runs daily : ${String(config.hour).padStart(2, '0')}:${String(config.minute).padStart(2, '0')}`);
+log(`    Log file   : ${config.logFile}`);
 log('━'.repeat(50));
 
-// Graceful shutdown
 process.on('SIGINT',  () => { log('🛑  Scheduler stopped (SIGINT).');  process.exit(0); });
 process.on('SIGTERM', () => { log('🛑  Scheduler stopped (SIGTERM).'); process.exit(0); });
 
-// Optional immediate run
-if (args['run-now']) {
+if (config.runNow) {
   log('▶   --run-now flag set: executing digest immediately.');
   runDigest().catch(() => {});
 }
 
-// Check every minute whether it is time to run
-function tick() {
+function tick(): void {
   const now = new Date();
-  if (now.getHours() === SCHEDULE_HOUR && now.getMinutes() === SCHEDULE_MINUTE) {
+  if (now.getHours() === config.hour && now.getMinutes() === config.minute) {
     runDigest().catch(() => {});
   }
 }
 
 setInterval(tick, 60 * 1000);
 
-// Log next scheduled time
 const ms = msUntilNextRun();
-log(`⏰  Next run in ${formatMs(ms)} (at ${String(SCHEDULE_HOUR).padStart(2,'0')}:${String(SCHEDULE_MINUTE).padStart(2,'0')} tomorrow if past).`);
+log(`⏰  Next run in ${formatMs(ms)} (at ${String(config.hour).padStart(2, '0')}:${String(config.minute).padStart(2, '0')} tomorrow if past).`);
 log('    Press Ctrl+C to stop.\n');

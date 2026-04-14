@@ -1,12 +1,12 @@
-I#!/usr/bin/env node
+#!/usr/bin/env node
 /**
- * @file setup.js
+ * @file setup.ts
  * @description Interactive configuration wizard for the Daily News Digest.
  * Guides the user through setting up API keys, messenger credentials,
  * and optional scheduling. Writes a .env file upon completion.
  *
  * Usage:
- *   node setup.js
+ *   npx tsx setup.ts
  *   npm run setup
  */
 
@@ -16,19 +16,25 @@ import { execSync, spawn } from 'child_process';
 import { platform } from 'os';
 
 // ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface EnvVarEntry {
+  key: string;
+  description: string;
+  required: boolean;
+  default?: string;
+}
+
+type MessengerChoice = 'telegram' | 'discord' | 'email' | 'none';
+
+// ---------------------------------------------------------------------------
 // Readline helper
 // ---------------------------------------------------------------------------
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 
-/**
- * Prompts the user with a question and returns their answer.
- *
- * @param {string} question - The prompt text shown to the user.
- * @param {string} [defaultValue=''] - Value used when the user presses Enter without typing.
- * @returns {Promise<string>}
- */
-function ask(question, defaultValue = '') {
+function ask(question: string, defaultValue = ''): Promise<string> {
   return new Promise(resolve => {
     const hint = defaultValue ? ` [${defaultValue}]` : '';
     rl.question(`${question}${hint}: `, answer => {
@@ -37,14 +43,7 @@ function ask(question, defaultValue = '') {
   });
 }
 
-/**
- * Prompts for a yes/no answer.
- *
- * @param {string} question - The prompt text.
- * @param {boolean} [defaultYes=true] - Default if user just presses Enter.
- * @returns {Promise<boolean>}
- */
-function askYesNo(question, defaultYes = true) {
+function askYesNo(question: string, defaultYes = true): Promise<boolean> {
   return new Promise(resolve => {
     const hint = defaultYes ? 'Y/n' : 'y/N';
     rl.question(`${question} [${hint}]: `, answer => {
@@ -55,20 +54,17 @@ function askYesNo(question, defaultYes = true) {
   });
 }
 
-/**
- * Prompts the user to choose one item from a numbered list.
- *
- * @param {string} question - The prompt text.
- * @param {string[]} choices - Array of choice labels.
- * @returns {Promise<string>} The selected choice label (lowercase).
- */
-async function askChoice(question, choices) {
+async function askMessenger(question: string): Promise<MessengerChoice> {
+  const choices: MessengerChoice[] = ['telegram', 'discord', 'email', 'none'];
+  const labels = ['Telegram', 'Discord', 'Email', 'None (console only)'];
+
   console.log(`\n${question}`);
-  choices.forEach((c, i) => console.log(`  ${i + 1}. ${c}`));
+  labels.forEach((c, i) => console.log(`  ${i + 1}. ${c}`));
+
   while (true) {
     const answer = await ask('Enter number');
     const idx = parseInt(answer, 10) - 1;
-    if (idx >= 0 && idx < choices.length) return choices[idx].toLowerCase();
+    if (idx >= 0 && idx < choices.length) return choices[idx];
     console.log(`  Please enter a number between 1 and ${choices.length}.`);
   }
 }
@@ -77,15 +73,24 @@ async function askChoice(question, choices) {
 // .env writer
 // ---------------------------------------------------------------------------
 
-/**
- * Serialises a key→value config object into .env file format.
- *
- * @param {Record<string, string>} config - The config values to write.
- * @param {string} [path='.env'] - Output path.
- */
-function writeEnvFile(config, path = '.env') {
+// Schema of all known env vars — used for documentation/tooling purposes
+export const ENV_SCHEMA: EnvVarEntry[] = [
+  { key: 'ANTHROPIC_API_KEY', description: 'Anthropic API key',        required: true },
+  { key: 'TELEGRAM_BOT_TOKEN', description: 'Telegram bot token',      required: false },
+  { key: 'TELEGRAM_CHAT_ID',   description: 'Telegram chat ID',        required: false },
+  { key: 'DISCORD_WEBHOOK_URL', description: 'Discord webhook URL',    required: false },
+  { key: 'GMAIL_EMAIL',        description: 'Gmail address',           required: false },
+  { key: 'GMAIL_PASSWORD',     description: 'Gmail app password',      required: false },
+  { key: 'NEWS_TOPIC',         description: 'Default news topic',      required: false, default: 'Technology' },
+  { key: 'ARTICLE_COUNT',      description: 'Articles per digest',     required: false, default: '5' },
+  { key: 'SCHEDULE_HOUR',      description: 'Hour to run (0–23)',      required: false, default: '8' },
+  { key: 'SCHEDULE_MINUTE',    description: 'Minute to run (0–59)',    required: false, default: '0' },
+  { key: 'MESSENGER',          description: 'Default messenger',       required: false, default: 'none' },
+];
+
+function writeEnvFile(config: Record<string, string>, path = '.env'): void {
   const lines = [
-    '# Daily News Digest – generated by setup.js',
+    '# Daily News Digest – generated by setup.ts',
     '',
     '# Anthropic API',
     `ANTHROPIC_API_KEY=${config.ANTHROPIC_API_KEY}`,
@@ -117,17 +122,9 @@ function writeEnvFile(config, path = '.env') {
 // Cron helper (Unix only)
 // ---------------------------------------------------------------------------
 
-/**
- * Attempts to add a cron job for daily digest delivery.
- * Only supported on Unix-like systems.
- *
- * @param {string} topic     - The news topic.
- * @param {string} messenger - The messenger (telegram/discord/email).
- * @param {string} hour      - Hour in 24h format (e.g. "8").
- */
-function addCronJob(topic, messenger, hour) {
+function addCronJob(topic: string, messenger: string, hour: string): void {
   const cwd = process.cwd();
-  const cronLine = `0 ${hour} * * * cd "${cwd}" && node digest.js --topic "${topic}" --messenger ${messenger}`;
+  const cronLine = `0 ${hour} * * * cd "${cwd}" && npx tsx digest.ts --topic "${topic}" --messenger ${messenger}`;
 
   try {
     let existing = '';
@@ -142,8 +139,9 @@ function addCronJob(topic, messenger, hour) {
     execSync(`echo ${JSON.stringify(updated)} | crontab -`);
     console.log(`✅  Cron job added: runs daily at ${hour}:00.`);
   } catch (err) {
-    console.warn(`⚠️   Could not add cron job automatically: ${err.message}`);
-    console.log(`    Add this line manually with: crontab -e`);
+    const e = err as { message: string };
+    console.warn(`⚠️   Could not add cron job automatically: ${e.message}`);
+    console.log('    Add this line manually with: crontab -e');
     console.log(`    ${cronLine}`);
   }
 }
@@ -152,14 +150,14 @@ function addCronJob(topic, messenger, hour) {
 // Main wizard
 // ---------------------------------------------------------------------------
 
-async function main() {
+async function main(): Promise<void> {
   console.log('\n' + '═'.repeat(55));
   console.log('  📰  Daily News Digest – Setup Wizard');
   console.log('═'.repeat(55));
   console.log('  This wizard will configure your news digest.');
   console.log('  Press Enter to accept the default value shown.\n');
 
-  const config = {};
+  const config: Record<string, string> = {};
 
   // 1. Anthropic API key
   console.log('\n── Step 1/9: Anthropic API Key ─────────────────────');
@@ -173,21 +171,21 @@ async function main() {
 
   // 2. Messenger choice
   console.log('\n── Step 2/9: Messenger ──────────────────────────────');
-  const messenger = await askChoice('  Which messenger do you want to use?', ['Telegram', 'Discord', 'Email', 'None (console only)']);
-  config._messenger = messenger.split(' ')[0].toLowerCase(); // 'telegram', 'discord', 'email', 'none'
+  const messenger: MessengerChoice = await askMessenger('  Which messenger do you want to use?');
+  config._messenger = messenger;
 
   // 3. Messenger credentials
   console.log('\n── Step 3/9: Messenger Credentials ─────────────────');
-  if (config._messenger === 'telegram') {
+  if (messenger === 'telegram') {
     console.log('  Create a bot at: https://t.me/BotFather');
     config.TELEGRAM_BOT_TOKEN = await ask('  Telegram bot token');
     console.log('  To get your chat ID, send a message to your bot then visit:');
     console.log('  https://api.telegram.org/bot<TOKEN>/getUpdates');
     config.TELEGRAM_CHAT_ID = await ask('  Telegram chat ID');
-  } else if (config._messenger === 'discord') {
+  } else if (messenger === 'discord') {
     console.log('  Create a webhook in your Discord channel settings.');
     config.DISCORD_WEBHOOK_URL = await ask('  Discord webhook URL');
-  } else if (config._messenger === 'email') {
+  } else if (messenger === 'email') {
     console.log('  Use an App Password, not your main Gmail password.');
     console.log('  Enable it at: myaccount.google.com → Security → App passwords');
     config.GMAIL_EMAIL    = await ask('  Gmail address');
@@ -223,8 +221,8 @@ async function main() {
     shouldCron = await askYesNo('  Set up a daily cron job?', false);
   } else {
     console.log('\n── Step 9/9: Scheduling (Windows) ───────────────────');
-    console.log('  Use scheduler.js for automated scheduling on Windows:');
-    console.log('    node scheduler.js');
+    console.log('  Use scheduler.ts for automated scheduling on Windows:');
+    console.log('    npx tsx scheduler.ts');
   }
 
   rl.close();
@@ -243,7 +241,7 @@ async function main() {
     try {
       execSync('npm install', { stdio: 'inherit' });
       console.log('  ✅  Dependencies installed.');
-    } catch (err) {
+    } catch (_) {
       console.error('  ❌  npm install failed. Run it manually: npm install');
     }
   }
@@ -262,22 +260,22 @@ async function main() {
   console.log(`  Delivery : ${config._messenger}`);
   console.log('');
   console.log('  Quick commands:');
-  console.log(`    npm test                               # dry-run test`);
-  console.log(`    node digest.js --topic "${config.NEWS_TOPIC}" --dry`);
-  if (config._messenger !== 'none') {
-    console.log(`    node digest.js --messenger ${config._messenger}   # send now`);
+  console.log('    npm test                                  # dry-run test');
+  console.log(`    npx tsx digest.ts --topic "${config.NEWS_TOPIC}" --dry`);
+  if (messenger !== 'none') {
+    console.log(`    npx tsx digest.ts --messenger ${messenger}    # send now`);
   }
-  console.log(`    node scheduler.js                      # run on schedule`);
+  console.log('    npx tsx scheduler.ts                      # run on schedule');
   console.log('═'.repeat(55) + '\n');
 
   // Test run
   if (shouldTest) {
     console.log('Running dry-run test…\n');
-    const child = spawn('node', ['digest.js', '--topic', config.NEWS_TOPIC, '--dry'], {
+    const child = spawn('npx', ['tsx', 'digest.ts', '--topic', config.NEWS_TOPIC, '--dry'], {
       stdio: 'inherit',
       env: { ...process.env, ANTHROPIC_API_KEY: config.ANTHROPIC_API_KEY },
     });
-    child.on('exit', code => {
+    child.on('exit', (code: number | null) => {
       if (code === 0) console.log('\n✅  Test passed!');
       else console.error(`\n❌  Test exited with code ${code}.`);
     });
@@ -285,7 +283,8 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error(`\n❌  Setup failed: ${err.message}`);
+  const e = err as { message: string };
+  console.error(`\n❌  Setup failed: ${e.message}`);
   rl.close();
   process.exit(1);
 });

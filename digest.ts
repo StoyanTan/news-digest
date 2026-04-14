@@ -1,30 +1,42 @@
 #!/usr/bin/env node
 /**
- * @file digest.js
+ * @file digest.ts
  * @description Daily news digest generator using the Anthropic Claude API with web search.
  * Supports delivery via Telegram, Discord, Email, or local file output.
  *
  * Usage:
- *   node digest.js --topic "AI" --messenger telegram
- *   node digest.js --topic "Climate" --count 3 --dry
- *   node digest.js --topic "Finance" --messenger email --output digest.md
+ *   npx tsx digest.ts --topic "AI" --messenger telegram
+ *   npx tsx digest.ts --topic "Climate" --count 3 --dry
+ *   npx tsx digest.ts --topic "Finance" --messenger email --output digest.md
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import type { TextBlock } from '@anthropic-ai/sdk/resources/messages.js';
 import { createTransport } from 'nodemailer';
 import { parseArgs } from 'util';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
 // ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface CliOptions {
+  topic: string;
+  messenger: string;
+  count: string;
+  dry: boolean;
+  output: string;
+  help: boolean;
+}
+
+type MessengerFn = (content: string) => Promise<void>;
+
+// ---------------------------------------------------------------------------
 // Environment loading (manual dotenv-lite – no extra dependency)
 // ---------------------------------------------------------------------------
 
-/**
- * Loads key=value pairs from a .env file in the current working directory.
- * Lines starting with # and blank lines are ignored.
- */
-function loadEnv() {
+function loadEnv(): void {
   const envPath = join(process.cwd(), '.env');
   if (!existsSync(envPath)) return;
   const lines = readFileSync(envPath, 'utf8').split('\n');
@@ -55,14 +67,14 @@ const { values: args } = parseArgs({
     help:      { type: 'boolean', short: 'h', default: false },
   },
   strict: false,
-});
+}) as { values: CliOptions };
 
 if (args.help) {
   console.log(`
 Daily News Digest – powered by Claude AI
 
 Usage:
-  node digest.js [options]
+  npx tsx digest.ts [options]
 
 Options:
   --topic,     -t  Topic to search for           (default: "Technology")
@@ -73,9 +85,9 @@ Options:
   --help,      -h  Show this help
 
 Examples:
-  node digest.js --topic "AI" --messenger telegram
-  node digest.js --topic "Climate" --dry
-  node digest.js --topic "Finance" --count 3 --output finance.md
+  npx tsx digest.ts --topic "AI" --messenger telegram
+  npx tsx digest.ts --topic "Climate" --dry
+  npx tsx digest.ts --topic "Finance" --count 3 --output finance.md
 `);
   process.exit(0);
 }
@@ -102,14 +114,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // Core: generate digest
 // ---------------------------------------------------------------------------
 
-/**
- * Generates a news digest for the given topic using Claude with web search.
- *
- * @param {string} topic - The news topic to search for.
- * @param {number} articleCount - How many articles to include.
- * @returns {Promise<string>} The formatted digest as plain text.
- */
-async function generateDigest(topic, articleCount) {
+async function generateDigest(topic: string, articleCount: number): Promise<string> {
   console.log(`\n🔍  Searching for ${articleCount} recent articles on "${topic}"…`);
 
   const prompt = `Find ${articleCount} recent, non-paywalled news articles about "${topic}" published in the last 7 days.
@@ -134,7 +139,7 @@ After all articles add:
 Generated: [current date and time with timezone]
 Powered by Claude`;
 
-  let response;
+  let response: Anthropic.Message;
   try {
     response = await anthropic.messages.create({
       model: 'claude-opus-4-6',
@@ -143,7 +148,8 @@ Powered by Claude`;
       messages: [{ role: 'user', content: prompt }],
     });
   } catch (err) {
-    if (err.status === 400 && err.message?.includes('web_search')) {
+    const apiErr = err as { status?: number; message?: string };
+    if (apiErr.status === 400 && apiErr.message?.includes('web_search')) {
       console.warn('⚠️   Web search tool unavailable for this API key tier – falling back to knowledge-only mode.');
       response = await anthropic.messages.create({
         model: 'claude-opus-4-6',
@@ -155,8 +161,7 @@ Powered by Claude`;
     }
   }
 
-  // Extract text content from response (may contain tool_use blocks too)
-  const textBlocks = response.content.filter(b => b.type === 'text');
+  const textBlocks = response.content.filter((b): b is TextBlock => b.type === 'text');
   if (textBlocks.length === 0) {
     throw new Error('Claude returned no text in its response.');
   }
@@ -170,13 +175,7 @@ Powered by Claude`;
 // Delivery: Telegram
 // ---------------------------------------------------------------------------
 
-/**
- * Sends a digest via Telegram Bot API, chunking messages longer than 4096 chars.
- *
- * @param {string} digest - The digest text to send.
- * @returns {Promise<void>}
- */
-async function sendViaTelegram(digest) {
+const sendViaTelegram: MessengerFn = async (digest) => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
@@ -199,26 +198,19 @@ async function sendViaTelegram(digest) {
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Telegram API error ${res.status}: ${err}`);
+      const errText = await res.text();
+      throw new Error(`Telegram API error ${res.status}: ${errText}`);
     }
   }
 
   console.log('✅  Sent via Telegram.');
-}
+};
 
 // ---------------------------------------------------------------------------
 // Delivery: Discord
 // ---------------------------------------------------------------------------
 
-/**
- * Sends a digest via Discord webhook, splitting into embeds for messages >2000 chars.
- *
- * @param {string} digest - The digest text to send.
- * @param {string} topic  - The topic name, used as the embed title.
- * @returns {Promise<void>}
- */
-async function sendViaDiscord(digest, topic) {
+async function sendViaDiscordWithTopic(digest: string, topic: string): Promise<void> {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) throw new Error('DISCORD_WEBHOOK_URL is not set in your environment.');
 
@@ -242,26 +234,21 @@ async function sendViaDiscord(digest, topic) {
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Discord webhook error ${res.status}: ${err}`);
+      const errText = await res.text();
+      throw new Error(`Discord webhook error ${res.status}: ${errText}`);
     }
   }
 
   console.log('✅  Sent via Discord.');
 }
 
+const sendViaDiscord: MessengerFn = (digest) => sendViaDiscordWithTopic(digest, TOPIC);
+
 // ---------------------------------------------------------------------------
 // Delivery: Email
 // ---------------------------------------------------------------------------
 
-/**
- * Sends the digest via Gmail using nodemailer.
- *
- * @param {string} digest - The digest text to send.
- * @param {string} topic  - Topic used as the email subject.
- * @returns {Promise<void>}
- */
-async function sendViaEmail(digest, topic) {
+async function sendViaEmailWithTopic(digest: string, topic: string): Promise<void> {
   const email = process.env.GMAIL_EMAIL;
   const password = process.env.GMAIL_PASSWORD;
 
@@ -295,19 +282,13 @@ async function sendViaEmail(digest, topic) {
   console.log('✅  Sent via Email.');
 }
 
+const sendViaEmail: MessengerFn = (digest) => sendViaEmailWithTopic(digest, TOPIC);
+
 // ---------------------------------------------------------------------------
 // Delivery: File
 // ---------------------------------------------------------------------------
 
-/**
- * Saves the digest to a markdown file.
- *
- * @param {string} digest   - The digest text.
- * @param {string} topic    - Topic name, used in the filename if path not provided.
- * @param {string} [filePath] - Optional explicit file path.
- * @returns {void}
- */
-function saveToFile(digest, topic, filePath) {
+function saveToFile(digest: string, topic: string, filePath: string): void {
   const safeTopic = topic.replace(/[^a-z0-9]/gi, '-').toLowerCase();
   const dateStr = new Date().toISOString().slice(0, 10);
   const target = filePath || `digest-${safeTopic}-${dateStr}.md`;
@@ -319,16 +300,9 @@ function saveToFile(digest, topic, filePath) {
 // Utility helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Splits text into chunks no longer than maxLen characters, preferring newline breaks.
- *
- * @param {string} text   - The text to split.
- * @param {number} maxLen - Maximum chunk length.
- * @returns {string[]}
- */
-function chunkText(text, maxLen) {
+function chunkText(text: string, maxLen: number): string[] {
   if (text.length <= maxLen) return [text];
-  const chunks = [];
+  const chunks: string[] = [];
   let remaining = text;
   while (remaining.length > maxLen) {
     let splitAt = remaining.lastIndexOf('\n', maxLen);
@@ -340,25 +314,11 @@ function chunkText(text, maxLen) {
   return chunks;
 }
 
-/**
- * Escapes HTML special characters.
- *
- * @param {string} str - Raw string.
- * @returns {string}
- */
-function escapeHtml(str) {
+function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/**
- * fetch() wrapper with simple exponential-backoff retry on transient errors.
- *
- * @param {string} url     - Target URL.
- * @param {object} options - fetch options.
- * @param {number} [retries=3] - Max retry attempts.
- * @returns {Promise<Response>}
- */
-async function fetchWithRetry(url, options, retries = 3) {
+async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       return await fetch(url, options);
@@ -369,13 +329,14 @@ async function fetchWithRetry(url, options, retries = 3) {
       await new Promise(r => setTimeout(r, delay));
     }
   }
+  throw new Error('fetchWithRetry: exhausted retries');
 }
 
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
-async function main() {
+async function main(): Promise<void> {
   console.log('━'.repeat(50));
   console.log(`📰  Daily News Digest`);
   console.log(`    Topic    : ${TOPIC}`);
@@ -383,12 +344,13 @@ async function main() {
   console.log(`    Delivery : ${DRY_RUN ? 'dry-run (preview only)' : MESSENGER}`);
   console.log('━'.repeat(50));
 
-  let digest;
+  let digest: string;
   try {
     digest = await generateDigest(TOPIC, ARTICLE_COUNT);
   } catch (err) {
-    console.error(`\n❌  Failed to generate digest: ${err.message}`);
-    if (err.status) console.error(`    HTTP ${err.status}`);
+    const e = err as { message: string; status?: number };
+    console.error(`\n❌  Failed to generate digest: ${e.message}`);
+    if (e.status) console.error(`    HTTP ${e.status}`);
     process.exit(1);
   }
 
@@ -401,28 +363,27 @@ async function main() {
     return;
   }
 
+  const messengerMap: Record<string, MessengerFn> = {
+    telegram: sendViaTelegram,
+    discord:  sendViaDiscord,
+    email:    sendViaEmail,
+  };
+
   try {
-    switch (MESSENGER) {
-      case 'telegram':
-        await sendViaTelegram(digest);
-        break;
-      case 'discord':
-        await sendViaDiscord(digest, TOPIC);
-        break;
-      case 'email':
-        await sendViaEmail(digest, TOPIC);
-        break;
-      case 'none':
-        console.log('\n--- DIGEST ---\n');
-        console.log(digest);
-        console.log('\n--- END ---\n');
-        break;
-      default:
-        console.warn(`⚠️   Unknown messenger "${MESSENGER}". Printing to console.`);
-        console.log(digest);
+    const fn = messengerMap[MESSENGER];
+    if (fn) {
+      await fn(digest);
+    } else if (MESSENGER === 'none') {
+      console.log('\n--- DIGEST ---\n');
+      console.log(digest);
+      console.log('\n--- END ---\n');
+    } else {
+      console.warn(`⚠️   Unknown messenger "${MESSENGER}". Printing to console.`);
+      console.log(digest);
     }
   } catch (err) {
-    console.error(`\n❌  Delivery failed: ${err.message}`);
+    const e = err as { message: string };
+    console.error(`\n❌  Delivery failed: ${e.message}`);
     process.exit(1);
   }
 
@@ -430,6 +391,7 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error(`\n❌  Unexpected error: ${err.message}`);
+  const e = err as { message: string };
+  console.error(`\n❌  Unexpected error: ${e.message}`);
   process.exit(1);
 });
