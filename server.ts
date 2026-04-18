@@ -49,7 +49,7 @@ app.get('/run', (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  const child = spawn('npx', ['tsx', 'digest.ts', '--topic', topic, '--ping'], {
+  const child = spawn('npx', ['tsx', 'digest.ts', '--topic', topic, '--messenger', 'discord'], {
     cwd: __dirname,
     shell: true,
   });

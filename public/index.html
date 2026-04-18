@@ -105,6 +105,29 @@
 
     #status.success { color: #5a7a3a; }
     #status.error   { color: #b03a2e; }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      width: 1rem;
+      height: 1rem;
+      accent-color: #c87941;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .checkbox-row span {
+      font-size: 0.85rem;
+      font-family: system-ui, sans-serif;
+      color: #9c6e4a;
+      cursor: pointer;
+      user-select: none;
+    }
   </style>
 </head>
 <body>
@@ -116,6 +139,10 @@
   <div class="card">
     <label for="topic">Topic</label>
     <input id="topic" type="text" value="Technology" placeholder="e.g. Climate Change" />
+    <div class="checkbox-row">
+      <input type="checkbox" id="ping-only" />
+      <span onclick="document.getElementById('ping-only').click()">Test Discord connection only (no AI call)</span>
+    </div>
     <button id="run-btn">Generate Digest</button>
     <div id="status"></div>
   </div>

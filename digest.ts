@@ -63,7 +63,7 @@ const { values: args } = parseArgs({
   options: {
     topic:     { type: 'string',  short: 't', default: process.env.NEWS_TOPIC || 'Technology' },
     messenger: { type: 'string',  short: 'm', default: 'none' },
-    count:     { type: 'string',  short: 'c', default: String(process.env.ARTICLE_COUNT || '5') },
+    count:     { type: 'string',  short: 'c', default: String(process.env.ARTICLE_COUNT || '1') },
     dry:       { type: 'boolean', short: 'd', default: false },
     smoke:     { type: 'boolean', short: 's', default: false },
     ping:      { type: 'boolean', short: 'p', default: false },
@@ -124,33 +124,31 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 async function generateDigest(topic: string, articleCount: number): Promise<string> {
   console.log(`\n🔍  Searching for ${articleCount} recent articles on "${topic}"…`);
 
-  const prompt = `Find ${articleCount} recent, non-paywalled news articles about "${topic}" published in the last 7 days.
+  const prompt = `Find the single most important recent news article about "${topic}" published in the last 7 days.
 
-For each article provide:
+Provide:
 - Title
 - Source (publication name)
 - URL
-- Summary (2–3 sentences)
-- Relevance (1 sentence explaining why this matters)
+- Summary (3–4 sentences)
+- Why it matters (1–2 sentences)
 
-Format each article exactly like this:
+Format exactly like this:
 
 **[Article Title]**
 Source: [Publication Name]
 URL: [Article URL]
-Summary: [2-3 sentence summary]
-Relevance: [Why this matters]
+Summary: [3-4 sentence summary]
+Why it matters: [1-2 sentences]
 ---
-
-After all articles add:
 Generated: [current date and time with timezone]
 Powered by Claude`;
 
   let response: Anthropic.Message;
   try {
     response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
       tools: [{ type: 'web_search_20250305', name: 'web_search' }],
       messages: [{ role: 'user', content: prompt }],
     });
@@ -159,9 +157,9 @@ Powered by Claude`;
     if (apiErr.status === 400 && apiErr.message?.includes('web_search')) {
       console.warn('⚠️   Web search tool unavailable for this API key tier – falling back to knowledge-only mode.');
       response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4000,
-        messages: [{ role: 'user', content: prompt + '\n\nNote: Use your training knowledge to provide the best articles you are aware of.' }],
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt + '\n\nNote: Use your training knowledge to provide the best article you are aware of.' }],
       });
     } else {
       throw err;
