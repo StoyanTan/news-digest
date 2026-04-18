@@ -2,12 +2,11 @@
 /**
  * @file digest.ts
  * @description Daily news digest generator using the Anthropic Claude API with web search.
- * Supports delivery via Discord, Email, or local file output.
+ * Can be used as a CLI or imported as a module (exports runDigest).
  *
- * Usage:
+ * Usage (CLI):
  *   npx tsx digest.ts --topic "AI" --messenger discord
- *   npx tsx digest.ts --topic "Climate" --count 3 --dry
- *   npx tsx digest.ts --topic "Finance" --messenger email --output digest.md
+ *   npx tsx digest.ts --topic "Climate" --dry
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -15,7 +14,8 @@ import type { TextBlock } from '@anthropic-ai/sdk/resources/messages.js';
 import { createTransport } from 'nodemailer';
 import { parseArgs } from 'util';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,14 +35,13 @@ interface CliOptions {
 type MessengerFn = (content: string) => Promise<void>;
 
 // ---------------------------------------------------------------------------
-// Environment loading (manual dotenv-lite – no extra dependency)
+// Environment loading
 // ---------------------------------------------------------------------------
 
 function loadEnv(): void {
   const envPath = join(process.cwd(), '.env');
   if (!existsSync(envPath)) return;
-  const lines = readFileSync(envPath, 'utf8').split('\n');
-  for (const line of lines) {
+  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const eqIndex = trimmed.indexOf('=');
@@ -56,219 +55,30 @@ function loadEnv(): void {
 loadEnv();
 
 // ---------------------------------------------------------------------------
-// CLI argument parsing
+// Lazy Anthropic client
 // ---------------------------------------------------------------------------
 
-const { values: args } = parseArgs({
-  options: {
-    topic:     { type: 'string',  short: 't', default: process.env.NEWS_TOPIC || 'Technology' },
-    messenger: { type: 'string',  short: 'm', default: 'none' },
-    count:     { type: 'string',  short: 'c', default: String(process.env.ARTICLE_COUNT || '1') },
-    dry:       { type: 'boolean', short: 'd', default: false },
-    smoke:     { type: 'boolean', short: 's', default: false },
-    ping:      { type: 'boolean', short: 'p', default: false },
-    output:    { type: 'string',  short: 'o', default: '' },
-    help:      { type: 'boolean', short: 'h', default: false },
-  },
-  strict: false,
-}) as { values: CliOptions };
+let _anthropic: Anthropic | null = null;
 
-if (args.help) {
-  console.log(`
-Daily News Digest – powered by Claude AI
-
-Usage:
-  npx tsx digest.ts [options]
-
-Options:
-  --topic,     -t  Topic to search for           (default: "Technology")
-  --messenger, -m  Delivery method: discord, email, none
-  --count,     -c  Number of articles            (default: 5)
-  --dry,       -d  Preview only – do not send
-  --smoke,     -s  Smoke test: verify API connectivity with minimal tokens
-  --output,    -o  Also save digest to this file
-  --help,      -h  Show this help
-
-Examples:
-  npx tsx digest.ts --topic "AI" --messenger discord
-  npx tsx digest.ts --topic "Climate" --dry
-  npx tsx digest.ts --topic "Finance" --count 3 --output finance.md
-`);
-  process.exit(0);
-}
-
-const TOPIC = args.topic;
-const MESSENGER = args.messenger.toLowerCase();
-const ARTICLE_COUNT = Math.max(1, Math.min(20, parseInt(args.count, 10) || 5));
-const DRY_RUN = args.dry;
-const SMOKE = args.smoke;
-const PING = args.ping;
-const OUTPUT_FILE = args.output;
-
-// ---------------------------------------------------------------------------
-// Anthropic client
-// ---------------------------------------------------------------------------
-
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error('❌  ANTHROPIC_API_KEY environment variable is not set.');
-  console.error('    Set it in your .env file or export it before running.');
-  process.exit(1);
-}
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-// ---------------------------------------------------------------------------
-// Core: generate digest
-// ---------------------------------------------------------------------------
-
-async function generateDigest(topic: string, articleCount: number): Promise<string> {
-  console.log(`\n🔍  Searching for ${articleCount} recent articles on "${topic}"…`);
-
-  const prompt = `Find the single most important recent news article about "${topic}" published in the last 7 days.
-
-Provide:
-- Title
-- Source (publication name)
-- URL
-- Summary (3–4 sentences)
-- Why it matters (1–2 sentences)
-
-Format exactly like this:
-
-**[Article Title]**
-Source: [Publication Name]
-URL: [Article URL]
-Summary: [3-4 sentence summary]
-Why it matters: [1-2 sentences]
----
-Generated: [current date and time with timezone]
-Powered by Claude`;
-
-  let response: Anthropic.Message;
-  try {
-    response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2000,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      messages: [{ role: 'user', content: prompt }],
-    });
-  } catch (err) {
-    const apiErr = err as { status?: number; message?: string };
-    if (apiErr.status === 400 && apiErr.message?.includes('web_search')) {
-      console.warn('⚠️   Web search tool unavailable for this API key tier – falling back to knowledge-only mode.');
-      response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt + '\n\nNote: Use your training knowledge to provide the best article you are aware of.' }],
-      });
-    } else {
-      throw err;
+function getClient(): Anthropic {
+  if (!_anthropic) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error('ANTHROPIC_API_KEY environment variable is not set.');
     }
+    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   }
-
-  const textBlocks = response.content.filter((b): b is TextBlock => b.type === 'text');
-  if (textBlocks.length === 0) {
-    throw new Error('Claude returned no text in its response.');
-  }
-
-  const digest = textBlocks.map(b => b.text).join('\n');
-  console.log('✅  Digest generated successfully.');
-  return digest;
-}
-
-// ---------------------------------------------------------------------------
-// Delivery: Discord
-// ---------------------------------------------------------------------------
-
-async function sendViaDiscordWithTopic(digest: string, topic: string): Promise<void> {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) throw new Error('DISCORD_WEBHOOK_URL is not set in your environment.');
-
-  const MAX_EMBED_DESC = 4096;
-  const chunks = chunkText(digest, MAX_EMBED_DESC);
-
-  console.log(`📨  Sending ${chunks.length} embed(s) via Discord…`);
-
-  for (let i = 0; i < chunks.length; i++) {
-    const embed = {
-      title: i === 0 ? `📰 Daily Digest: ${topic}` : `📰 Daily Digest: ${topic} (continued)`,
-      description: chunks[i],
-      color: 0x5865F2,
-      footer: { text: 'Powered by Claude AI' },
-    };
-
-    const res = await fetchWithRetry(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ embeds: [embed] }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Discord webhook error ${res.status}: ${errText}`);
-    }
-  }
-
-  console.log('✅  Sent via Discord.');
-}
-
-const sendViaDiscord: MessengerFn = (digest) => sendViaDiscordWithTopic(digest, TOPIC);
-
-// ---------------------------------------------------------------------------
-// Delivery: Email
-// ---------------------------------------------------------------------------
-
-async function sendViaEmailWithTopic(digest: string, topic: string): Promise<void> {
-  const email = process.env.GMAIL_EMAIL;
-  const password = process.env.GMAIL_PASSWORD;
-
-  if (!email)    throw new Error('GMAIL_EMAIL is not set in your environment.');
-  if (!password) throw new Error('GMAIL_PASSWORD is not set in your environment.');
-
-  console.log('📨  Sending via Gmail…');
-
-  const transporter = createTransport({
-    service: 'gmail',
-    auth: { user: email, pass: password },
-  });
-
-  const htmlContent = `
-    <html><body style="font-family: sans-serif; max-width: 700px; margin: auto;">
-      <h1 style="color:#1a1a2e;">📰 Daily Digest: ${escapeHtml(topic)}</h1>
-      <pre style="white-space:pre-wrap; font-family:inherit; font-size:14px;">${escapeHtml(digest)}</pre>
-      <hr/>
-      <p style="color:#888; font-size:12px;">Powered by Claude AI</p>
-    </body></html>
-  `;
-
-  await transporter.sendMail({
-    from: email,
-    to: email,
-    subject: `📰 Daily Digest: ${topic}`,
-    text: digest,
-    html: htmlContent,
-  });
-
-  console.log('✅  Sent via Email.');
-}
-
-const sendViaEmail: MessengerFn = (digest) => sendViaEmailWithTopic(digest, TOPIC);
-
-// ---------------------------------------------------------------------------
-// Delivery: File
-// ---------------------------------------------------------------------------
-
-function saveToFile(digest: string, topic: string, filePath: string): void {
-  const safeTopic = topic.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const target = filePath || `digest-${safeTopic}-${dateStr}.md`;
-  writeFileSync(target, `# Daily Digest: ${topic}\n\n${digest}\n`, 'utf8');
-  console.log(`💾  Saved to ${target}`);
+  return _anthropic;
 }
 
 // ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
+
+function yesterday(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
 
 function chunkText(text: string, maxLen: number): string[] {
   if (text.length <= maxLen) return [text];
@@ -303,109 +113,268 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
 }
 
 // ---------------------------------------------------------------------------
-// Smoke test
+// Core: generate digest
 // ---------------------------------------------------------------------------
 
-async function runSmokeTest(messenger: string): Promise<void> {
-  console.log('🔬  Running smoke test…');
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 10,
-    messages: [{ role: 'user', content: 'Reply with OK' }],
-  });
-  const text = (response.content.find(b => b.type === 'text') as TextBlock | undefined)?.text ?? '';
-  console.log(`✅  API reachable. Response: "${text.trim()}"`);
+async function generateDigest(topic: string): Promise<string> {
+  console.log(`\n🔍  Searching for top "${topic}" article from the last 24 hours…`);
 
-  if (messenger === 'discord') {
-    await sendViaDiscord(`🔬 Smoke test passed: Claude API reachable. Response: "${text.trim()}"`);
-  } else if (messenger === 'email') {
-    await sendViaEmail(`🔬 Smoke test passed: Claude API reachable. Response: "${text.trim()}"`);
+  const today = new Date().toISOString().slice(0, 10);
+  const prompt = `Today is ${today}. Find the single most important news article about "${topic}" published on ${today} or ${yesterday()}.
+
+Start your reply directly with the article — no preamble, no search commentary.
+
+**[Article Title]**
+Source: [Publication Name]
+URL: [Article URL]
+Summary: [2-3 sentences]
+Why it matters: [1 sentence]
+---
+Generated: ${new Date().toUTCString()}
+Powered by Claude`;
+
+  let response: Anthropic.Message;
+  try {
+    response = await getClient().messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      messages: [{ role: 'user', content: prompt }],
+    });
+  } catch (err) {
+    const apiErr = err as { status?: number; message?: string };
+    if (apiErr.status === 400 && apiErr.message?.includes('web_search')) {
+      console.warn('⚠️   Web search unavailable – falling back to knowledge-only mode.');
+      response = await getClient().messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        messages: [{ role: 'user', content: prompt + '\n\nUse your most recent training knowledge. Reply in the format above only.' }],
+      });
+    } else {
+      throw err;
+    }
   }
+
+  const textBlocks = response.content.filter((b): b is TextBlock => b.type === 'text');
+  if (textBlocks.length === 0) throw new Error('Claude returned no text in its response.');
+
+  const raw = textBlocks.map(b => b.text).join('\n');
+  const articleStart = raw.indexOf('**');
+  const digest = articleStart > 0 ? raw.slice(articleStart) : raw;
+  console.log('✅  Digest generated successfully.');
+  return digest;
 }
 
 // ---------------------------------------------------------------------------
-// Main
+// Delivery: Discord
 // ---------------------------------------------------------------------------
 
-async function main(): Promise<void> {
-  if (PING) {
-    try {
-      await sendViaDiscord('🏓 Ping from News Digest — Discord connection OK!');
-      console.log('✅  Discord ping sent.');
-    } catch (err) {
-      const e = err as { message: string };
-      console.error(`❌  Discord ping failed: ${e.message}`);
-      process.exit(1);
+async function sendViaDiscordWithTopic(digest: string, topic: string): Promise<void> {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) throw new Error('DISCORD_WEBHOOK_URL is not set in your environment.');
+
+  const MAX_EMBED_DESC = 4096;
+  const chunks = chunkText(digest, MAX_EMBED_DESC);
+  console.log(`📨  Sending ${chunks.length} embed(s) via Discord…`);
+
+  for (let i = 0; i < chunks.length; i++) {
+    const embed = {
+      title: i === 0 ? `📰 Daily Digest: ${topic}` : `📰 Daily Digest: ${topic} (continued)`,
+      description: chunks[i],
+      color: 0x5865F2,
+      footer: { text: 'Powered by Claude AI' },
+    };
+    const res = await fetchWithRetry(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Discord webhook error ${res.status}: ${errText}`);
     }
-    return;
+  }
+  console.log('✅  Sent via Discord.');
+}
+
+// ---------------------------------------------------------------------------
+// Delivery: Email
+// ---------------------------------------------------------------------------
+
+async function sendViaEmailWithTopic(digest: string, topic: string): Promise<void> {
+  const email = process.env.GMAIL_EMAIL;
+  const password = process.env.GMAIL_PASSWORD;
+  if (!email)    throw new Error('GMAIL_EMAIL is not set in your environment.');
+  if (!password) throw new Error('GMAIL_PASSWORD is not set in your environment.');
+
+  console.log('📨  Sending via Gmail…');
+  const transporter = createTransport({ service: 'gmail', auth: { user: email, pass: password } });
+  const htmlContent = `
+    <html><body style="font-family: sans-serif; max-width: 700px; margin: auto;">
+      <h1 style="color:#1a1a2e;">📰 Daily Digest: ${escapeHtml(topic)}</h1>
+      <pre style="white-space:pre-wrap; font-family:inherit; font-size:14px;">${escapeHtml(digest)}</pre>
+      <hr/><p style="color:#888; font-size:12px;">Powered by Claude AI</p>
+    </body></html>`;
+  await transporter.sendMail({
+    from: email, to: email,
+    subject: `📰 Daily Digest: ${topic}`,
+    text: digest, html: htmlContent,
+  });
+  console.log('✅  Sent via Email.');
+}
+
+// ---------------------------------------------------------------------------
+// Delivery: File
+// ---------------------------------------------------------------------------
+
+function saveToFile(digest: string, topic: string, filePath: string): void {
+  const safeTopic = topic.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const target = filePath || `digest-${safeTopic}-${dateStr}.md`;
+  writeFileSync(target, `# Daily Digest: ${topic}\n\n${digest}\n`, 'utf8');
+  console.log(`💾  Saved to ${target}`);
+}
+
+// ---------------------------------------------------------------------------
+// Public API (used by server.ts)
+// ---------------------------------------------------------------------------
+
+export async function runDigest(topic: string): Promise<void> {
+  const digest = await generateDigest(topic);
+  await sendViaDiscordWithTopic(digest, topic);
+}
+
+// ---------------------------------------------------------------------------
+// CLI entry point
+// ---------------------------------------------------------------------------
+
+const __filename = fileURLToPath(import.meta.url);
+if (resolve(process.argv[1] ?? '') === resolve(__filename)) {
+  const { values: args } = parseArgs({
+    options: {
+      topic:     { type: 'string',  short: 't', default: process.env.NEWS_TOPIC || 'Technology' },
+      messenger: { type: 'string',  short: 'm', default: 'none' },
+      count:     { type: 'string',  short: 'c', default: String(process.env.ARTICLE_COUNT || '1') },
+      dry:       { type: 'boolean', short: 'd', default: false },
+      smoke:     { type: 'boolean', short: 's', default: false },
+      ping:      { type: 'boolean', short: 'p', default: false },
+      output:    { type: 'string',  short: 'o', default: '' },
+      help:      { type: 'boolean', short: 'h', default: false },
+    },
+    strict: false,
+  }) as { values: CliOptions };
+
+  if (args.help) {
+    console.log(`
+Daily News Digest – powered by Claude AI
+
+Usage:
+  npx tsx digest.ts [options]
+
+Options:
+  --topic,     -t  Topic to search for           (default: "Technology")
+  --messenger, -m  Delivery method: discord, email, none
+  --count,     -c  Number of articles            (default: 1)
+  --dry,       -d  Preview only – do not send
+  --smoke,     -s  Smoke test: verify API connectivity with minimal tokens
+  --ping,      -p  Send a Discord ping (no API call)
+  --output,    -o  Also save digest to this file
+  --help,      -h  Show this help
+`);
+    process.exit(0);
   }
 
-  if (SMOKE) {
+  const TOPIC     = args.topic;
+  const MESSENGER = args.messenger.toLowerCase();
+  const ARTICLE_COUNT = Math.max(1, Math.min(20, parseInt(args.count, 10) || 1));
+  const DRY_RUN   = args.dry;
+  const SMOKE     = args.smoke;
+  const PING      = args.ping;
+  const OUTPUT_FILE = args.output;
+
+  const sendViaDiscord: MessengerFn = (d) => sendViaDiscordWithTopic(d, TOPIC);
+  const sendViaEmail:   MessengerFn = (d) => sendViaEmailWithTopic(d, TOPIC);
+
+  async function main(): Promise<void> {
+    if (PING) {
+      try {
+        await sendViaDiscord('🏓 Ping from News Digest — Discord connection OK!');
+        console.log('✅  Discord ping sent.');
+      } catch (err) {
+        console.error(`❌  Discord ping failed: ${(err as Error).message}`);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (SMOKE) {
+      try {
+        console.log('🔬  Running smoke test…');
+        const response = await getClient().messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 10,
+          messages: [{ role: 'user', content: 'Reply with OK' }],
+        });
+        const text = (response.content.find(b => b.type === 'text') as TextBlock | undefined)?.text ?? '';
+        console.log(`✅  API reachable. Response: "${text.trim()}"`);
+        if (MESSENGER === 'discord') await sendViaDiscord(`🔬 Smoke test passed. Response: "${text.trim()}"`);
+        if (MESSENGER === 'email')   await sendViaEmail(`🔬 Smoke test passed. Response: "${text.trim()}"`);
+      } catch (err) {
+        const e = err as { message: string; status?: number };
+        console.error(`\n❌  Smoke test failed: ${e.message}`);
+        if (e.status) console.error(`    HTTP ${e.status}`);
+        process.exit(1);
+      }
+      return;
+    }
+
+    console.log('━'.repeat(50));
+    console.log(`📰  Daily News Digest`);
+    console.log(`    Topic    : ${TOPIC}`);
+    console.log(`    Articles : ${ARTICLE_COUNT}`);
+    console.log(`    Delivery : ${DRY_RUN ? 'dry-run (preview only)' : MESSENGER}`);
+    console.log('━'.repeat(50));
+
+    let digest: string;
     try {
-      await runSmokeTest(MESSENGER);
+      digest = await generateDigest(TOPIC);
     } catch (err) {
       const e = err as { message: string; status?: number };
-      console.error(`\n❌  Smoke test failed: ${e.message}`);
+      console.error(`\n❌  Failed to generate digest: ${e.message}`);
       if (e.status) console.error(`    HTTP ${e.status}`);
       process.exit(1);
     }
-    return;
-  }
 
-  console.log('━'.repeat(50));
-  console.log(`📰  Daily News Digest`);
-  console.log(`    Topic    : ${TOPIC}`);
-  console.log(`    Articles : ${ARTICLE_COUNT}`);
-  console.log(`    Delivery : ${DRY_RUN ? 'dry-run (preview only)' : MESSENGER}`);
-  console.log('━'.repeat(50));
-
-  let digest: string;
-  try {
-    digest = await generateDigest(TOPIC, ARTICLE_COUNT);
-  } catch (err) {
-    const e = err as { message: string; status?: number };
-    console.error(`\n❌  Failed to generate digest: ${e.message}`);
-    if (e.status) console.error(`    HTTP ${e.status}`);
-    process.exit(1);
-  }
-
-  if (DRY_RUN) {
-    console.log('\n--- DIGEST PREVIEW ---\n');
-    console.log(digest);
-    console.log('\n--- END PREVIEW ---\n');
-    console.log('ℹ️   Dry-run mode: digest was not sent.');
-    if (OUTPUT_FILE) saveToFile(digest, TOPIC, OUTPUT_FILE);
-    return;
-  }
-
-  const messengerMap: Record<string, MessengerFn> = {
-    discord: sendViaDiscord,
-    email:   sendViaEmail,
-  };
-
-  try {
-    const fn = messengerMap[MESSENGER];
-    if (fn) {
-      await fn(digest);
-    } else if (MESSENGER === 'none') {
-      console.log('\n--- DIGEST ---\n');
+    if (DRY_RUN) {
+      console.log('\n--- DIGEST PREVIEW ---\n');
       console.log(digest);
-      console.log('\n--- END ---\n');
-    } else {
-      console.warn(`⚠️   Unknown messenger "${MESSENGER}". Printing to console.`);
-      console.log(digest);
+      console.log('\n--- END PREVIEW ---\n');
+      console.log('ℹ️   Dry-run mode: digest was not sent.');
+      if (OUTPUT_FILE) saveToFile(digest, TOPIC, OUTPUT_FILE);
+      return;
     }
-  } catch (err) {
-    const e = err as { message: string };
-    console.error(`\n❌  Delivery failed: ${e.message}`);
-    process.exit(1);
+
+    const messengerMap: Record<string, MessengerFn> = { discord: sendViaDiscord, email: sendViaEmail };
+
+    try {
+      const fn = messengerMap[MESSENGER];
+      if (fn) {
+        await fn(digest);
+      } else {
+        console.log('\n--- DIGEST ---\n');
+        console.log(digest);
+        console.log('\n--- END ---\n');
+      }
+    } catch (err) {
+      console.error(`\n❌  Delivery failed: ${(err as Error).message}`);
+      process.exit(1);
+    }
+
+    if (OUTPUT_FILE) saveToFile(digest, TOPIC, OUTPUT_FILE);
   }
 
-  if (OUTPUT_FILE) saveToFile(digest, TOPIC, OUTPUT_FILE);
+  main().catch(err => {
+    console.error(`\n❌  Unexpected error: ${(err as Error).message}`);
+    process.exit(1);
+  });
 }
-
-main().catch(err => {
-  const e = err as { message: string };
-  console.error(`\n❌  Unexpected error: ${e.message}`);
-  process.exit(1);
-});
