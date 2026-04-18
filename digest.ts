@@ -2,10 +2,10 @@
 /**
  * @file digest.ts
  * @description Daily news digest generator using the Anthropic Claude API with web search.
- * Supports delivery via Telegram, Discord, Email, or local file output.
+ * Supports delivery via Discord, Email, or local file output.
  *
  * Usage:
- *   npx tsx digest.ts --topic "AI" --messenger telegram
+ *   npx tsx digest.ts --topic "AI" --messenger discord
  *   npx tsx digest.ts --topic "Climate" --count 3 --dry
  *   npx tsx digest.ts --topic "Finance" --messenger email --output digest.md
  */
@@ -26,6 +26,7 @@ interface CliOptions {
   messenger: string;
   count: string;
   dry: boolean;
+  smoke: boolean;
   output: string;
   help: boolean;
 }
@@ -63,6 +64,7 @@ const { values: args } = parseArgs({
     messenger: { type: 'string',  short: 'm', default: 'none' },
     count:     { type: 'string',  short: 'c', default: String(process.env.ARTICLE_COUNT || '5') },
     dry:       { type: 'boolean', short: 'd', default: false },
+    smoke:     { type: 'boolean', short: 's', default: false },
     output:    { type: 'string',  short: 'o', default: '' },
     help:      { type: 'boolean', short: 'h', default: false },
   },
@@ -78,14 +80,15 @@ Usage:
 
 Options:
   --topic,     -t  Topic to search for           (default: "Technology")
-  --messenger, -m  Delivery method: telegram, discord, email, none
+  --messenger, -m  Delivery method: discord, email, none
   --count,     -c  Number of articles            (default: 5)
   --dry,       -d  Preview only – do not send
+  --smoke,     -s  Smoke test: verify API connectivity with minimal tokens
   --output,    -o  Also save digest to this file
   --help,      -h  Show this help
 
 Examples:
-  npx tsx digest.ts --topic "AI" --messenger telegram
+  npx tsx digest.ts --topic "AI" --messenger discord
   npx tsx digest.ts --topic "Climate" --dry
   npx tsx digest.ts --topic "Finance" --count 3 --output finance.md
 `);
@@ -96,6 +99,7 @@ const TOPIC = args.topic;
 const MESSENGER = args.messenger.toLowerCase();
 const ARTICLE_COUNT = Math.max(1, Math.min(20, parseInt(args.count, 10) || 5));
 const DRY_RUN = args.dry;
+const SMOKE = args.smoke;
 const OUTPUT_FILE = args.output;
 
 // ---------------------------------------------------------------------------
@@ -170,41 +174,6 @@ Powered by Claude`;
   console.log('✅  Digest generated successfully.');
   return digest;
 }
-
-// ---------------------------------------------------------------------------
-// Delivery: Telegram
-// ---------------------------------------------------------------------------
-
-const sendViaTelegram: MessengerFn = async (digest) => {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-
-  if (!token) throw new Error('TELEGRAM_BOT_TOKEN is not set in your environment.');
-  if (!chatId) throw new Error('TELEGRAM_CHAT_ID is not set in your environment.');
-
-  const MAX_LEN = 4096;
-  const chunks = chunkText(digest, MAX_LEN);
-
-  console.log(`📨  Sending ${chunks.length} message(s) via Telegram…`);
-
-  for (const chunk of chunks) {
-    const url = `https://api.telegram.org/bot${token}/sendMessage`;
-    const body = JSON.stringify({ chat_id: chatId, text: chunk, parse_mode: 'Markdown' });
-
-    const res = await fetchWithRetry(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Telegram API error ${res.status}: ${errText}`);
-    }
-  }
-
-  console.log('✅  Sent via Telegram.');
-};
 
 // ---------------------------------------------------------------------------
 // Delivery: Discord
@@ -333,10 +302,43 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
 }
 
 // ---------------------------------------------------------------------------
+// Smoke test
+// ---------------------------------------------------------------------------
+
+async function runSmokeTest(messenger: string): Promise<void> {
+  console.log('🔬  Running smoke test…');
+  const response = await anthropic.messages.create({
+    model: 'claude-opus-4-6',
+    max_tokens: 10,
+    messages: [{ role: 'user', content: 'Reply with OK' }],
+  });
+  const text = (response.content.find(b => b.type === 'text') as TextBlock | undefined)?.text ?? '';
+  console.log(`✅  API reachable. Response: "${text.trim()}"`);
+
+  if (messenger === 'discord') {
+    await sendViaDiscord(`🔬 Smoke test passed: Claude API reachable. Response: "${text.trim()}"`);
+  } else if (messenger === 'email') {
+    await sendViaEmail(`🔬 Smoke test passed: Claude API reachable. Response: "${text.trim()}"`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
+  if (SMOKE) {
+    try {
+      await runSmokeTest(MESSENGER);
+    } catch (err) {
+      const e = err as { message: string; status?: number };
+      console.error(`\n❌  Smoke test failed: ${e.message}`);
+      if (e.status) console.error(`    HTTP ${e.status}`);
+      process.exit(1);
+    }
+    return;
+  }
+
   console.log('━'.repeat(50));
   console.log(`📰  Daily News Digest`);
   console.log(`    Topic    : ${TOPIC}`);
@@ -364,9 +366,8 @@ async function main(): Promise<void> {
   }
 
   const messengerMap: Record<string, MessengerFn> = {
-    telegram: sendViaTelegram,
-    discord:  sendViaDiscord,
-    email:    sendViaEmail,
+    discord: sendViaDiscord,
+    email:   sendViaEmail,
   };
 
   try {

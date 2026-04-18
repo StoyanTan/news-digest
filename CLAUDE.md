@@ -2,10 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Permissions
+
+Read operations (GitHub, Jira, filesystem, APIs) — proceed without asking.
+
+Ask before:
+- Pushing to master or triggering a pipeline
+- Any write operation on the filesystem
+- Any write operation on external systems (GitHub PRs/issues, Jira tickets, etc.)
+
 ## Overview
 
 A Node.js application that generates daily news digests using the Anthropic Claude API
-(with web search) and delivers them via Telegram, Discord, or Email.
+(with web search) and delivers them via Discord or Email.
 
 ## Tech Stack
 
@@ -31,12 +40,12 @@ npm install
 npm run setup     # configure credentials
 npm test          # dry-run on "Artificial Intelligence"
 node digest.js --topic "AI" --dry   # preview any topic
-node digest.js --topic "Finance" --count 3 --messenger telegram
+node digest.js --topic "Finance" --count 3 --messenger discord
 ```
 
 ## Architecture
 
-`digest.js` flow: parse CLI args → `generateDigest()` calls Claude with `web_search` tool → delivery function (`sendViaTelegram` / `sendViaDiscord` / `sendViaEmail`) → optional `saveToFile()`.
+`digest.js` flow: parse CLI args → `generateDigest()` calls Claude with `web_search` tool → delivery function (`sendViaDiscord` / `sendViaEmail`) → optional `saveToFile()`.
 
 If the `web_search_20250305` tool is unavailable (API key tier), `generateDigest()` automatically retries without it (knowledge-only fallback).
 
@@ -45,7 +54,7 @@ If the `web_search_20250305` tool is unavailable (API key tier), `generateDigest
 ## Environment Variables
 
 All credentials live in `.env`. See `.env.example` for the full list.
-Required: `ANTHROPIC_API_KEY`. Then one of: `TELEGRAM_*`, `DISCORD_WEBHOOK_URL`, or `GMAIL_*`.
+Required: `ANTHROPIC_API_KEY`. Then one of: `DISCORD_WEBHOOK_URL` or `GMAIL_*`.
 
 Scheduler-specific (optional):
 - `SCHEDULE_HOUR` / `SCHEDULE_MINUTE` — time to run daily (default `8:00`)

@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "npx tsx digest.ts",
-    "test": "npx tsx digest.ts --topic \"Artificial Intelligence\" --dry",
+    "test": "npx tsx digest.ts --smoke",
     "setup": "npx tsx setup.ts",
     "build": "tsc --noEmit"
   },
