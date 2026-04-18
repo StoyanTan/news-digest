@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>News Digest</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: #fdf6ee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2.25rem;
+      color: #3b1f0a;
+      letter-spacing: 0.02em;
+    }
+
+    header p {
+      margin-top: 0.4rem;
+      font-size: 0.95rem;
+      color: #9c6e4a;
+      font-style: italic;
+    }
+
+    .card {
+      background: #fffaf4;
+      border: 1px solid #e8d5be;
+      border-radius: 12px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 2px 12px rgba(120, 70, 20, 0.07);
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-family: system-ui, sans-serif;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #9c6e4a;
+      margin-bottom: 0.35rem;
+    }
+
+    #topic {
+      width: 100%;
+      padding: 0.6rem 0.9rem;
+      font-size: 1rem;
+      font-family: Georgia, serif;
+      border: 1px solid #d4b896;
+      border-radius: 8px;
+      background: #fdf6ee;
+      color: #3b1f0a;
+      outline: none;
+      margin-bottom: 1rem;
+      transition: border-color 0.15s;
+    }
+
+    #topic:focus { border-color: #c87941; }
+
+    #run-btn {
+      width: 100%;
+      padding: 0.7rem;
+      font-size: 1rem;
+      font-family: system-ui, sans-serif;
+      font-weight: 600;
+      background: #c87941;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    #run-btn:hover:not(:disabled) { background: #a85e2e; }
+
+    #run-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    #status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      font-family: system-ui, sans-serif;
+      text-align: center;
+      min-height: 1.4em;
+      color: #9c6e4a;
+    }
+
+    #status.success { color: #5a7a3a; }
+    #status.error   { color: #b03a2e; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>News Digest</h1>
+    <p>Powered by Claude AI &amp; live web search</p>
+  </header>
+
+  <div class="card">
+    <label for="topic">Topic</label>
+    <input id="topic" type="text" value="Technology" placeholder="e.g. Climate Change" />
+    <button id="run-btn">Generate Digest</button>
+    <div id="status"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

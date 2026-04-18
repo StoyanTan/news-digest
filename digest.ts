@@ -27,6 +27,7 @@ interface CliOptions {
   count: string;
   dry: boolean;
   smoke: boolean;
+  ping: boolean;
   output: string;
   help: boolean;
 }
@@ -65,6 +66,7 @@ const { values: args } = parseArgs({
     count:     { type: 'string',  short: 'c', default: String(process.env.ARTICLE_COUNT || '5') },
     dry:       { type: 'boolean', short: 'd', default: false },
     smoke:     { type: 'boolean', short: 's', default: false },
+    ping:      { type: 'boolean', short: 'p', default: false },
     output:    { type: 'string',  short: 'o', default: '' },
     help:      { type: 'boolean', short: 'h', default: false },
   },
@@ -100,6 +102,7 @@ const MESSENGER = args.messenger.toLowerCase();
 const ARTICLE_COUNT = Math.max(1, Math.min(20, parseInt(args.count, 10) || 5));
 const DRY_RUN = args.dry;
 const SMOKE = args.smoke;
+const PING = args.ping;
 const OUTPUT_FILE = args.output;
 
 // ---------------------------------------------------------------------------
@@ -146,7 +149,7 @@ Powered by Claude`;
   let response: Anthropic.Message;
   try {
     response = await anthropic.messages.create({
-      model: 'claude-opus-4-6',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4000,
       tools: [{ type: 'web_search_20250305', name: 'web_search' }],
       messages: [{ role: 'user', content: prompt }],
@@ -156,7 +159,7 @@ Powered by Claude`;
     if (apiErr.status === 400 && apiErr.message?.includes('web_search')) {
       console.warn('⚠️   Web search tool unavailable for this API key tier – falling back to knowledge-only mode.');
       response = await anthropic.messages.create({
-        model: 'claude-opus-4-6',
+        model: 'claude-sonnet-4-6',
         max_tokens: 4000,
         messages: [{ role: 'user', content: prompt + '\n\nNote: Use your training knowledge to provide the best articles you are aware of.' }],
       });
@@ -308,7 +311,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
 async function runSmokeTest(messenger: string): Promise<void> {
   console.log('🔬  Running smoke test…');
   const response = await anthropic.messages.create({
-    model: 'claude-opus-4-6',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 10,
     messages: [{ role: 'user', content: 'Reply with OK' }],
   });
@@ -327,6 +330,18 @@ async function runSmokeTest(messenger: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
+  if (PING) {
+    try {
+      await sendViaDiscord('🏓 Ping from News Digest — Discord connection OK!');
+      console.log('✅  Discord ping sent.');
+    } catch (err) {
+      const e = err as { message: string };
+      console.error(`❌  Discord ping failed: ${e.message}`);
+      process.exit(1);
+    }
+    return;
+  }
+
   if (SMOKE) {
     try {
       await runSmokeTest(MESSENGER);

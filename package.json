@@ -11,13 +11,18 @@
     "start": "npx tsx digest.ts",
     "test": "npx tsx digest.ts --smoke",
     "setup": "npx tsx setup.ts",
-    "build": "tsc --noEmit"
+    "build": "tsc --noEmit",
+    "preserve": "npx --yes kill-port 3000",
+    "serve": "npx tsx server.ts",
+    "test:discord": "npx tsx test/discord-ping.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
+    "express": "latest",
     "nodemailer": "latest"
   },
   "devDependencies": {
+    "@types/express": "latest",
     "@types/node": "^25.6.0",
     "@types/nodemailer": "^8.0.0",
     "tsx": "^4.21.0",
