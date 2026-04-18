@@ -65,3 +65,8 @@ Scheduler-specific (optional):
 node scheduler.js           # start scheduled runner
 node scheduler.js --run-now # also fire immediately on start
 ```
+
+## Session Lifecycle
+
+**Starting**: Read MEMORY.md. Check handoffs/ for the latest handoff. Resume context.
+**Ending**: Write a handoff if work is in-progress. Save any corrections to memory.
