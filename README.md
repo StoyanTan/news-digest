@@ -1,20 +1,19 @@
 # Daily News Digest
 
-A production-ready Node.js application that searches for recent news articles using
-the **Claude AI** web search tool, summarises them, and delivers a daily digest via
-**Telegram**, **Discord**, or **Email**.
+A Node.js application that searches for recent news articles using the **Claude AI** web search tool, summarises them, and delivers a daily digest via **Discord** or **Email**.
 
 ---
 
 ## Features
 
 - AI-generated summaries with source links via Claude's web search
-- Delivery via Telegram, Discord (embeds), or Gmail
+- Delivery via Discord (rich embeds) or Gmail
 - Interactive setup wizard (`npm run setup`)
 - Local scheduler for Windows and servers without cron
+- Smoke test mode for verifying API connectivity cheaply
 - Dry-run mode for previewing without sending
 - Automatic message chunking (respects API limits)
-- ES module codebase, Node.js ≥ 18
+- TypeScript codebase, Node.js ≥ 18
 
 ---
 
@@ -22,11 +21,11 @@ the **Claude AI** web search tool, summarises them, and delivers a daily digest 
 
 - **Node.js 18+** – [nodejs.org](https://nodejs.org/)
 - **Anthropic API key** – [console.anthropic.com](https://console.anthropic.com/)
-- A messenger account (Telegram bot, Discord webhook, or Gmail)
+- A messenger account (Discord webhook or Gmail)
 
 ---
 
-## Quick Start (3 Steps)
+## Quick Start
 
 ```bash
 # 1. Install dependencies
@@ -35,7 +34,7 @@ npm install
 # 2. Run the interactive setup wizard
 npm run setup
 
-# 3. Test with a dry run
+# 3. Verify API connectivity
 npm test
 ```
 
@@ -44,13 +43,14 @@ npm test
 ## Command Reference
 
 ```
-node digest.js [options]
+npx tsx digest.ts [options]
 
 Options:
-  --topic,     -t  News topic to search for       (default: env NEWS_TOPIC or "Technology")
-  --messenger, -m  Delivery: telegram|discord|email|none  (default: none)
-  --count,     -c  Number of articles             (default: env ARTICLE_COUNT or 5)
+  --topic,     -t  News topic to search for          (default: env NEWS_TOPIC or "Technology")
+  --messenger, -m  Delivery: discord|email|none       (default: none)
+  --count,     -c  Number of articles                (default: env ARTICLE_COUNT or 5)
   --dry,       -d  Preview without sending
+  --smoke,     -s  Verify API connectivity (minimal tokens)
   --output,    -o  Also save digest to this file path
   --help,      -h  Show help
 ```
@@ -58,20 +58,23 @@ Options:
 ### Examples
 
 ```bash
-# Preview AI digest on "Quantum Computing"
-node digest.js --topic "Quantum Computing" --dry
+# Verify API key works (cheap — ~10 tokens)
+npx tsx digest.ts --smoke
 
-# Send to Telegram
-node digest.js --topic "Space Exploration" --messenger telegram
+# Smoke test and post a confirmation to Discord
+npx tsx digest.ts --smoke --messenger discord
+
+# Preview digest on "Quantum Computing"
+npx tsx digest.ts --topic "Quantum Computing" --dry
 
 # Send to Discord with 10 articles
-node digest.js --topic "Finance" --messenger discord --count 10
+npx tsx digest.ts --topic "Finance" --messenger discord --count 10
 
 # Send via email and also save to a file
-node digest.js --topic "Health" --messenger email --output health.md
+npx tsx digest.ts --topic "Health" --messenger email --output health.md
 
 # Schedule daily runs (cross-platform)
-node scheduler.js --run-now
+npx tsx scheduler.ts --run-now
 ```
 
 ### npm scripts
@@ -79,26 +82,13 @@ node scheduler.js --run-now
 | Command | Description |
 |---|---|
 | `npm start` | Run digest with default settings |
-| `npm test` | Dry-run test with topic "Artificial Intelligence" |
+| `npm test` | Smoke test — verify API connectivity |
 | `npm run setup` | Launch the interactive configuration wizard |
+| `npm run build` | Type-check without emitting (`tsc --noEmit`) |
 
 ---
 
 ## Messenger Setup
-
-### Telegram
-
-1. Message [@BotFather](https://t.me/BotFather) → `/newbot` → copy the **Bot Token**
-2. Start a chat with your bot
-3. Visit `https://api.telegram.org/bot<TOKEN>/getUpdates` → copy `chat.id`
-
-Set in `.env`:
-```
-TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
-TELEGRAM_CHAT_ID=987654321
-```
-
-Messages longer than 4 096 characters are automatically split into multiple messages.
 
 ### Discord
 
@@ -138,20 +128,20 @@ crontab -e
 
 Add a line (example: daily at 8:00 AM):
 ```
-0 8 * * * cd /path/to/news-digest && node digest.js --topic "Technology" --messenger telegram
+0 8 * * * cd /path/to/news-digest && npx tsx digest.ts --topic "Technology" --messenger discord
 ```
 
-### Windows – Task Scheduler or scheduler.js
+### Windows – Task Scheduler or scheduler.ts
 
 ```bash
 # Run the built-in scheduler (checks every minute)
-node scheduler.js
+npx tsx scheduler.ts
 
 # Run immediately and then on schedule
-node scheduler.js --run-now
+npx tsx scheduler.ts --run-now
 ```
 
-Environment variables for `scheduler.js`:
+Environment variables for `scheduler.ts`:
 
 | Variable | Default | Description |
 |---|---|---|
@@ -178,13 +168,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - run: npm install
-      - run: node digest.js --topic "Technology" --messenger telegram
+          node-version: '24'
+      - run: npm ci
+      - run: npx tsx digest.ts --topic "Technology" --messenger discord
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
 ```
 
 ---
@@ -192,20 +181,18 @@ jobs:
 ## Configuration
 
 All configuration lives in a `.env` file in the project root.
-Run `npm run setup` to generate it, or copy `.env.example` and fill in the values.
+Run `npm run setup` to generate it.
 
 | Variable | Required | Description |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Yes | Your Anthropic API key |
-| `TELEGRAM_BOT_TOKEN` | Telegram only | Bot token from BotFather |
-| `TELEGRAM_CHAT_ID` | Telegram only | Target chat ID |
 | `DISCORD_WEBHOOK_URL` | Discord only | Webhook URL |
 | `GMAIL_EMAIL` | Email only | Gmail address |
 | `GMAIL_PASSWORD` | Email only | Gmail App Password |
 | `NEWS_TOPIC` | No | Default topic (used by `npm start`) |
 | `ARTICLE_COUNT` | No | Default article count (default: 5) |
-| `SCHEDULE_HOUR` | No | Hour for scheduler.js (default: 8) |
-| `SCHEDULE_MINUTE` | No | Minute for scheduler.js (default: 0) |
+| `SCHEDULE_HOUR` | No | Hour for scheduler.ts (default: 8) |
+| `SCHEDULE_MINUTE` | No | Minute for scheduler.ts (default: 0) |
 
 ---
 
@@ -216,7 +203,9 @@ Each digest call uses approximately:
 - **Output**: ~1 500–3 000 tokens (digest)
 - **Web search**: ~3–10 search queries depending on topic
 
-At Claude Opus 4.6 pricing (~$15/MTok in, ~$75/MTok out) a daily digest costs roughly **$0.10–$0.25 per run**.
+At Claude Opus 4.6 pricing a daily digest costs roughly **$0.10–$0.25 per run**.
+
+The `--smoke` flag uses ~10 tokens and is safe to run in CI on every trigger.
 
 ---
 
@@ -230,10 +219,6 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 ### "Cannot find module" / "ERR_MODULE_NOT_FOUND"
 Run `npm install` to install dependencies.
-
-### Telegram: messages not arriving
-- Make sure you have sent at least one message to your bot before running.
-- Verify the `TELEGRAM_CHAT_ID` (it may be a negative number for group chats).
 
 ### Discord: 404 Webhook Not Found
 The webhook may have been deleted. Regenerate it in Discord channel settings.
@@ -253,13 +238,10 @@ The webhook may have been deleted. Regenerate it in Discord channel settings.
 ### `generateDigest(topic, articleCount) → Promise<string>`
 Calls Claude with web search and returns the formatted digest text.
 
-### `sendViaTelegram(digest) → Promise<void>`
-Sends the digest via the Telegram Bot API. Reads `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from env.
+### `sendViaDiscord(digest) → Promise<void>`
+Posts the digest as Discord embeds. Reads `DISCORD_WEBHOOK_URL` from env.
 
-### `sendViaDiscord(digest, topic) → Promise<void>`
-Posts the digest as a Discord embed. Reads `DISCORD_WEBHOOK_URL` from env.
-
-### `sendViaEmail(digest, topic) → Promise<void>`
+### `sendViaEmail(digest) → Promise<void>`
 Sends the digest via Gmail using nodemailer. Reads `GMAIL_EMAIL` and `GMAIL_PASSWORD` from env.
 
 ### `saveToFile(digest, topic, filePath?) → void`
@@ -273,7 +255,6 @@ Saves the digest as a Markdown file. Auto-names as `digest-<topic>-<date>.md` if
 - Use Gmail **App Passwords**, not your account password.
 - Rotate API keys regularly.
 - When using GitHub Actions, store secrets in **Settings → Secrets**.
-- The Telegram bot token grants full control of the bot; keep it private.
 
 ---
 
@@ -282,11 +263,12 @@ Saves the digest as a Markdown file. Auto-names as `digest-<topic>-<date>.md` if
 ```
 news-digest/
 ├── package.json        # Dependencies and scripts
-├── .env.example        # Configuration template
+├── tsconfig.json       # TypeScript configuration
 ├── .env                # Your configuration (git-ignored)
-├── digest.js           # Main application
-├── setup.js            # Interactive setup wizard
-├── scheduler.js        # Cross-platform daily scheduler
+├── digest.ts           # Main application
+├── setup.ts            # Interactive setup wizard
+├── scheduler.ts        # Cross-platform daily scheduler
+├── types/env.d.ts      # Environment variable types
 ├── README.md           # This file
 ├── QUICKSTART.md       # 5-minute quick start
 └── node_modules/       # Installed by npm install

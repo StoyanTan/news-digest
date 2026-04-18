@@ -16,7 +16,8 @@
  *   MESSENGER          - Delivery method (telegram/discord/email/none)
  */
 
-import { spawn, SpawnOptions } from 'child_process';
+import { spawn } from 'child_process';
+import type { SpawnOptions } from 'child_process';
 import { appendFileSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { parseArgs } from 'util';

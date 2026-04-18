@@ -17,13 +17,6 @@ Get your first digest in 5 minutes.
 
 Pick **one** of the following:
 
-### Telegram
-1. Open Telegram and message [@BotFather](https://t.me/BotFather)
-2. Send `/newbot` and follow the prompts → copy your **Bot Token**
-3. Start a chat with your new bot, then visit:
-   `https://api.telegram.org/bot<TOKEN>/getUpdates`
-4. Copy the `chat.id` value from the JSON response
-
 ### Discord
 1. Open your Discord server → **Channel Settings** → **Integrations** → **Webhooks**
 2. Click **New Webhook** and copy the URL
@@ -52,12 +45,12 @@ The wizard will ask for your API key, messenger credentials, topic, and schedule
 npm test
 ```
 
-This runs a dry-run (no message sent) for the topic "Artificial Intelligence".
+This runs a smoke test — a minimal API call that confirms your key works without generating a full digest.
 
-Test with your own topic:
+Test the full digest with a preview:
 
 ```bash
-node digest.js --topic "Climate Change" --dry
+npx tsx digest.ts --topic "Climate Change" --dry
 ```
 
 ---
@@ -68,19 +61,19 @@ node digest.js --topic "Climate Change" --dry
 ```bash
 crontab -e
 # Add (runs daily at 8 AM):
-0 8 * * * cd /path/to/news-digest && node digest.js --topic "Technology" --messenger telegram
+0 8 * * * cd /path/to/news-digest && npx tsx digest.ts --topic "Technology" --messenger discord
 ```
 
-### Windows / cross-platform (scheduler.js)
+### Windows / cross-platform (scheduler.ts)
 ```bash
-node scheduler.js
+npx tsx scheduler.ts
 # Runs in the foreground – use a process manager like PM2 or Windows Task Scheduler
 # to keep it alive.
 ```
 
-### Send now (without waiting for the schedule)
+### Send now
 ```bash
-node digest.js --topic "Technology" --messenger telegram
+npx tsx digest.ts --topic "Technology" --messenger discord
 ```
 
 ---
@@ -91,7 +84,6 @@ node digest.js --topic "Technology" --messenger telegram
 |---|---|
 | `ANTHROPIC_API_KEY not found` | Add it to your `.env` file or `export` it |
 | `Module not found` | Run `npm install` |
-| Telegram: no message | Verify bot token and chat ID; make sure you messaged the bot first |
 | Discord: 404 error | Regenerate the webhook URL |
 | Gmail: auth error | Use an App Password, not your account password |
 | Empty digest | Check your API key tier supports `claude-opus-4-6` |
