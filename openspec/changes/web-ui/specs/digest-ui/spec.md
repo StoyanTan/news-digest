@@ -16,7 +16,7 @@ The UI SHALL display a checkbox labelled "Test Discord connection only (no AI ca
 
 #### Scenario: Checkbox unchecked (default)
 - **WHEN** the checkbox is unchecked and the user clicks "Generate Digest"
-- **THEN** the browser opens an SSE stream to `GET /run?topic=<topic>` and waits for a `done` or `error` event
+- **THEN** the browser fires `GET /run?topic=<topic>`, the button re-enables on server acknowledgement (202), and no status is shown on success — the digest runs in the background and delivers to Discord
 
 #### Scenario: Checkbox checked
 - **WHEN** the checkbox is checked and the user clicks "Generate Digest"
@@ -41,8 +41,8 @@ The UI SHALL display a status line below the button that reflects the outcome of
 - **THEN** the status line reads "Discord connection OK!" in green
 
 #### Scenario: Digest success
-- **WHEN** the SSE stream ends with `event: done`
-- **THEN** the status line reads "Digest sent to Discord!" in green
+- **WHEN** the server acknowledges the run request with `202`
+- **THEN** the button re-enables immediately with no status message — digest runs in background
 
 #### Scenario: Error status
 - **WHEN** the server responds with an error (ping or run)

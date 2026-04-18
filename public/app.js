@@ -1,24 +1,35 @@
 const btn = document.getElementById('run-btn');
+const btnLabel = btn.querySelector('.btn-label');
 const topicInput = document.getElementById('topic');
 const pingOnly = document.getElementById('ping-only');
 const status = document.getElementById('status');
 
+// Topic chip click handler
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    topicInput.value = chip.dataset.topic;
+    topicInput.focus();
+  });
+});
+
 btn.addEventListener('click', () => {
   const topic = topicInput.value.trim() || 'Technology';
   btn.disabled = true;
+  btn.classList.add('loading');
   status.className = '';
+  status.textContent = '';
 
   if (pingOnly.checked) {
-    btn.textContent = 'Testing\u2026';
-    status.textContent = 'Pinging Discord\u2026';
+    btnLabel.textContent = 'Testing\u2026';
     fetch('/ping')
       .then(r => r.json())
       .then(data => {
         btn.disabled = false;
-        btn.textContent = 'Generate Digest';
+        btn.classList.remove('loading');
+        btnLabel.textContent = 'Generate Digest';
         if (data.ok) {
           status.className = 'success';
-          status.textContent = 'Discord connection OK!';
+          status.textContent = '\u2713 Check your Discord!';
         } else {
           status.className = 'error';
           status.textContent = `Error: ${data.error}`;
@@ -26,35 +37,32 @@ btn.addEventListener('click', () => {
       })
       .catch(() => {
         btn.disabled = false;
-        btn.textContent = 'Generate Digest';
+        btn.classList.remove('loading');
+        btnLabel.textContent = 'Generate Digest';
         status.className = 'error';
         status.textContent = 'Could not reach server.';
       });
   } else {
-    btn.textContent = 'Generating\u2026';
-    status.textContent = 'Generating digest\u2026';
-    const evtSource = new EventSource(`/run?topic=${encodeURIComponent(topic)}`);
-    evtSource.addEventListener('done', () => {
-      evtSource.close();
-      btn.disabled = false;
-      btn.textContent = 'Generate Digest';
-      status.className = 'success';
-      status.textContent = 'Digest sent to Discord!';
-    });
-    evtSource.addEventListener('error', e => {
-      evtSource.close();
-      btn.disabled = false;
-      btn.textContent = 'Generate Digest';
-      status.className = 'error';
-      status.textContent = e.data ? `Error: ${e.data}` : 'Digest generation failed.';
-    });
-    evtSource.onerror = () => {
-      if (evtSource.readyState === EventSource.CLOSED) return;
-      evtSource.close();
-      btn.disabled = false;
-      btn.textContent = 'Generate Digest';
-      status.className = 'error';
-      status.textContent = 'Connection to server lost.';
-    };
+    btnLabel.textContent = 'Sending\u2026';
+    fetch(`/run?topic=${encodeURIComponent(topic)}`)
+      .then(r => {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        btnLabel.textContent = 'Generate Digest';
+        if (r.ok) {
+          status.className = 'success';
+          status.textContent = '\u2713 Check your Discord!';
+        } else {
+          status.className = 'error';
+          status.textContent = 'Server error \u2014 digest not started.';
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        btnLabel.textContent = 'Generate Digest';
+        status.className = 'error';
+        status.textContent = 'Could not reach server.';
+      });
   }
 });

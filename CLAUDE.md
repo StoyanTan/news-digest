@@ -70,3 +70,12 @@ node scheduler.js --run-now # also fire immediately on start
 
 **Starting**: Read MEMORY.md. Check handoffs/ for the latest handoff. Resume context.
 **Ending**: Write a handoff if work is in-progress. Save any corrections to memory.
+
+## How I work
+- I am a software engineer, skip verbose answers, get technical if needed
+- I want production-ready output, not a proof of concept
+- Happy to get recommendations
+
+## Workflow Rules
+- Save corrections by me to memory, let's not repeat mistakes
+- When code and behavior changes, update and run tests, update docs

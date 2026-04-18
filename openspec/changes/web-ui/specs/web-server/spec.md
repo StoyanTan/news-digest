@@ -30,21 +30,13 @@ The server SHALL expose `GET /ping` that posts a hardcoded test message to the c
 - **WHEN** Discord returns a non-2xx status or the request fails
 - **THEN** the server responds `{ "ok": false, "error": "<reason>" }` with status `500`
 
-### Requirement: Digest run endpoint with SSE streaming
-The server SHALL expose `GET /run?topic=<topic>` that spawns `digest.ts` as a child process and streams its stdout/stderr output to the client using Server-Sent Events.
+### Requirement: Digest run endpoint (fire-and-forget)
+The server SHALL expose `GET /run?topic=<topic>` that spawns `digest.ts` as a detached background process and immediately returns `202 Accepted`. The digest runs independently and delivers to Discord — no streaming to the client.
 
 #### Scenario: Valid topic triggers digest
 - **WHEN** a client requests `GET /run?topic=Artificial+Intelligence`
-- **THEN** the server spawns `npx tsx digest.ts --topic "Artificial Intelligence"` and streams output lines as SSE `data:` events
-
-#### Scenario: Stream ends on process exit
-- **WHEN** the child process exits
-- **THEN** the server sends a final `event: done` SSE event and closes the response
+- **THEN** the server spawns `npx tsx digest.ts --topic "Artificial Intelligence" --messenger discord` as a detached process and responds `{ "ok": true }` with status `202`
 
 #### Scenario: Missing topic falls back to default
 - **WHEN** a client requests `GET /run` with no topic parameter
 - **THEN** the server uses `"Technology"` as the default topic
-
-#### Scenario: Child process error is surfaced
-- **WHEN** the child process exits with a non-zero code
-- **THEN** the server sends an `event: error` SSE event with the exit code before closing

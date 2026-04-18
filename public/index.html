@@ -7,116 +7,284 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --accent-a: #818cf8;
+      --accent-b: #38bdf8;
+      --accent-c: #6366f1;
+      --surface: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.08);
+      --text-base: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --bg: #080f1f;
+    }
+
+    html, body {
+      min-height: 100%;
+    }
+
     body {
-      font-family: Georgia, 'Times New Roman', serif;
-      background: #f5e6d0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text-base);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 2rem 1.5rem;
+      padding: 2.5rem 1.25rem;
+      position: relative;
+      overflow-x: hidden;
     }
 
-    /* ── Masthead ── */
+    /* ── Grid overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 80px 80px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Color orbs ── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(80px);
+    }
+
+    .orb-1 {
+      width: 600px;
+      height: 600px;
+      background: #4f46e5;
+      opacity: 0.45;
+      top: -180px;
+      left: -180px;
+      animation: drift1 18s ease-in-out infinite alternate;
+    }
+
+    .orb-2 {
+      width: 500px;
+      height: 500px;
+      background: #0ea5e9;
+      opacity: 0.38;
+      top: 10%;
+      right: -160px;
+      animation: drift2 22s ease-in-out infinite alternate;
+    }
+
+    .orb-3 {
+      width: 400px;
+      height: 400px;
+      background: #7c3aed;
+      opacity: 0.30;
+      bottom: -100px;
+      left: 30%;
+      animation: drift3 26s ease-in-out infinite alternate;
+    }
+
+    /* Central glow so the card area isn't pitch black */
+    .orb-center {
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, #1e2a4a 0%, transparent 70%);
+      opacity: 1;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      filter: blur(60px);
+      animation: none;
+    }
+
+    @keyframes drift1 {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(60px, 80px) scale(1.08); }
+    }
+
+    @keyframes drift2 {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(-70px, 60px) scale(1.1); }
+    }
+
+    @keyframes drift3 {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(50px, -70px) scale(0.95); }
+    }
+
+    /* ── Page enter animation ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    /* ── Header ── */
     header {
       text-align: center;
-      margin-bottom: 2.5rem;
-      width: 100%;
-      max-width: 520px;
+      margin-bottom: 2rem;
     }
 
-    .masthead-rule {
-      border: none;
-      border-top: 4px double #b85c1a;
-      margin-bottom: 0.8rem;
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(129,140,248,0.25);
+      border-radius: 999px;
+      padding: 0.3rem 0.9rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent-a);
+      margin-bottom: 1.1rem;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-a);
+      animation: pulse 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
     }
 
     header h1 {
-      font-size: 3rem;
-      color: #1a0a00;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
+      font-size: clamp(2.2rem, 8vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
       line-height: 1.05;
+      background: linear-gradient(135deg, #e2e8f0 30%, #818cf8 70%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.55rem;
     }
 
     header p {
-      margin-top: 0.4rem;
-      font-size: 0.95rem;
-      color: #7a4010;
-      font-style: italic;
-      letter-spacing: 0.04em;
-    }
-
-    .masthead-rule-bottom {
-      border: none;
-      border-top: 1.5px solid #c8885a;
-      margin-top: 0.8rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.5;
     }
 
     /* ── Card ── */
     .card {
-      background: #fff8ef;
-      border: 1.5px solid #dbb98a;
-      border-radius: 4px;
-      padding: 2rem;
-      width: 100%;
-      max-width: 520px;
-      box-shadow: 0 4px 24px rgba(100, 50, 10, 0.12);
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow:
+        0 0 0 1px rgba(129,140,248,0.15),
+        0 20px 60px rgba(0,0,0,0.45),
+        0 0 100px rgba(129,140,248,0.08);
     }
 
+    /* ── Label ── */
     label[for="topic"] {
       display: block;
-      font-size: 0.75rem;
-      font-family: system-ui, sans-serif;
+      font-size: 0.7rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: #b85c1a;
-      margin-bottom: 0.4rem;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      margin-bottom: 0.45rem;
     }
 
+    /* ── Input ── */
     #topic {
       width: 100%;
       padding: 0.75rem 1rem;
-      font-size: 1.15rem;
-      font-family: Georgia, serif;
-      border: 1.5px solid #c8885a;
-      border-radius: 4px;
-      background: #fdf3e7;
-      color: #1a0a00;
+      font-size: 1rem;
+      font-family: system-ui, sans-serif;
+      background: rgba(255,255,255,0.05);
+      color: var(--text-base);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
       outline: none;
-      margin-bottom: 1.2rem;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 0.85rem;
     }
 
     #topic::placeholder {
-      color: #b89070;
-      font-style: italic;
+      color: #475569;
     }
 
     #topic:focus {
-      border-color: #b85c1a;
-      box-shadow: 0 0 0 3px rgba(184, 92, 26, 0.18);
+      border-color: rgba(129,140,248,0.5);
+      box-shadow: 0 0 0 3px rgba(129,140,248,0.12);
     }
 
-    /* ── Custom checkbox ── */
+    /* ── Topic chips ── */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.3rem 0.75rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      user-select: none;
+    }
+
+    .chip:hover {
+      background: rgba(99,102,241,0.12);
+      border-color: rgba(129,140,248,0.35);
+      color: var(--accent-a);
+    }
+
+    .chip:focus-visible {
+      outline: 2px solid var(--accent-a);
+      outline-offset: 2px;
+    }
+
+    /* ── Checkbox ── */
     .checkbox-row {
       display: flex;
       align-items: center;
       gap: 0.65rem;
-      margin-bottom: 1.2rem;
+      margin-bottom: 1.25rem;
       cursor: pointer;
     }
 
     .checkbox-row input[type="checkbox"] {
       appearance: none;
       -webkit-appearance: none;
-      width: 1.15rem;
-      height: 1.15rem;
-      border: 1.5px solid #b85c1a;
-      border-radius: 3px;
-      background: #fdf3e7;
+      width: 1.1rem;
+      height: 1.1rem;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 4px;
+      background: rgba(0,0,0,0.4);
       cursor: pointer;
       flex-shrink: 0;
       position: relative;
@@ -124,17 +292,18 @@
     }
 
     .checkbox-row input[type="checkbox"]:checked {
-      background: #b85c1a;
-      border-color: #b85c1a;
+      background: linear-gradient(135deg, #818cf8, #38bdf8);
+      border-color: transparent;
     }
 
     .checkbox-row input[type="checkbox"]:checked::after {
       content: '';
       position: absolute;
-      left: 3px;
-      top: 0px;
+      inset: 0;
+      margin: auto;
       width: 5px;
       height: 9px;
+      margin-top: 1px;
       border: 2px solid #fff;
       border-top: none;
       border-left: none;
@@ -142,39 +311,44 @@
     }
 
     .checkbox-row input[type="checkbox"]:focus-visible {
-      outline: 2px solid #b85c1a;
+      outline: 2px solid var(--accent-a);
       outline-offset: 2px;
     }
 
     .checkbox-row span {
-      font-size: 0.88rem;
-      font-family: system-ui, sans-serif;
-      color: #5c3010;
+      font-size: 0.85rem;
+      color: var(--text-muted);
       user-select: none;
-      line-height: 1.3;
+      line-height: 1.4;
     }
 
     /* ── Button ── */
     #run-btn {
       width: 100%;
       padding: 0.85rem;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-family: system-ui, sans-serif;
       font-weight: 700;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.07em;
       text-transform: uppercase;
-      background: #b85c1a;
+      background: linear-gradient(135deg, #6366f1, #38bdf8, #6366f1);
+      background-size: 200% 100%;
+      background-position: 0% 0%;
       color: #fff;
       border: none;
-      border-radius: 4px;
+      border-radius: 10px;
       cursor: pointer;
       position: relative;
       overflow: hidden;
-      transition: background 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      transition: background-position 0.4s ease, opacity 0.15s, transform 0.1s;
     }
 
     #run-btn:hover:not(:disabled) {
-      background: #8f4412;
+      background-position: 100% 0%;
       transform: translateY(-1px);
     }
 
@@ -183,65 +357,113 @@
     }
 
     #run-btn:focus-visible {
-      outline: 2px solid #b85c1a;
+      outline: 2px solid var(--accent-a);
       outline-offset: 3px;
     }
 
     #run-btn:disabled {
-      opacity: 0.65;
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
-    @keyframes shimmer {
-      0%   { transform: translateX(-100%); }
-      100% { transform: translateX(200%); }
+    /* ── Spinner ── */
+    .spinner {
+      display: none;
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      flex-shrink: 0;
+      animation: spin 0.7s linear infinite;
     }
 
-    #run-btn:disabled::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(255,255,255,0.28) 50%,
-        transparent 100%
-      );
-      animation: shimmer 1.4s ease-in-out infinite;
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
-    /* ── Status line ── */
+    #run-btn.loading .spinner {
+      display: block;
+    }
+
+    /* ── Status ── */
     #status {
-      margin-top: 1.1rem;
-      font-size: 0.95rem;
-      font-family: system-ui, sans-serif;
+      margin-top: 1rem;
+      font-size: 0.9rem;
       text-align: center;
       min-height: 1.4em;
-      color: #7a4010;
+      color: var(--text-muted);
+      transition: color 0.2s;
     }
 
-    #status.success { color: #2e6b1a; font-weight: 600; }
-    #status.error   { color: #c0200e; font-weight: 600; }
+    #status.success {
+      color: #4ade80;
+      font-weight: 600;
+    }
+
+    #status.error {
+      color: #f87171;
+      font-weight: 600;
+    }
+
+    /* ── Footer ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      margin-top: 1.75rem;
+      font-size: 0.75rem;
+      color: #1e293b;
+      text-align: center;
+      letter-spacing: 0.03em;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <hr class="masthead-rule" />
-    <h1>News Digest</h1>
-    <p>Powered by Claude AI &amp; live web search</p>
-    <hr class="masthead-rule-bottom" />
-  </header>
 
-  <div class="card">
-    <label for="topic">Topic</label>
-    <input id="topic" type="text" placeholder="e.g. Climate Change, AI, Finance…" />
-    <label class="checkbox-row" for="ping-only">
-      <input type="checkbox" id="ping-only" />
-      <span>Test Discord connection only (no AI call)</span>
-    </label>
-    <button id="run-btn">Generate Digest</button>
-    <div id="status"></div>
-  </div>
+  <!-- Color orbs -->
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
+  <div class="orb orb-3" aria-hidden="true"></div>
+  <div class="orb orb-center" aria-hidden="true"></div>
+
+  <main>
+    <header>
+      <div class="eyebrow">
+        <span class="pulse-dot" aria-hidden="true"></span>
+        Live &middot; AI-Powered &middot; Real-time
+      </div>
+      <h1>News Digest</h1>
+      <p>Research synthesized by Claude AI, delivered to Discord</p>
+    </header>
+
+    <div class="card">
+      <label for="topic">Topic</label>
+      <input id="topic" type="text" placeholder="e.g. Climate Change, AI, Finance…" autocomplete="off" />
+
+      <div class="chips" role="list" aria-label="Quick topic shortcuts">
+        <button class="chip" role="listitem" data-topic="AI">🤖 AI</button>
+        <button class="chip" role="listitem" data-topic="Finance">💰 Finance</button>
+        <button class="chip" role="listitem" data-topic="Climate">🌱 Climate</button>
+        <button class="chip" role="listitem" data-topic="Science">🔬 Science</button>
+        <button class="chip" role="listitem" data-topic="Politics">🏛️ Politics</button>
+        <button class="chip" role="listitem" data-topic="Space">🚀 Space</button>
+      </div>
+
+      <label class="checkbox-row" for="ping-only">
+        <input type="checkbox" id="ping-only" />
+        <span>Test Discord connection only (no AI call)</span>
+      </label>
+
+      <button id="run-btn">
+        <span class="spinner" aria-hidden="true"></span>
+        <span class="btn-label">Generate Digest</span>
+      </button>
+
+      <div id="status" role="status" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <footer>Powered by Claude AI &amp; live web search</footer>
 
   <script src="app.js"></script>
 </body>
