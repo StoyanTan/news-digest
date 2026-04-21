@@ -19,13 +19,13 @@
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
     "express": "latest",
-    "nodemailer": "latest"
+    "nodemailer": "latest",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/express": "latest",
     "@types/node": "^25.6.0",
     "@types/nodemailer": "^8.0.0",
-    "tsx": "^4.21.0",
     "typescript": "^6.0.2"
   }
 }
