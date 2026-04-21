@@ -27,7 +27,7 @@ services:
     name: daily-digest-cron
     runtime: node
     plan: free
-    schedule: "0 8 * * *"
+    schedule: "0 9 * * *"
     buildCommand: npm install
     startCommand: npx tsx daily.ts
     envVars:

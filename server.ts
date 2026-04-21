@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
-import { runDigest } from './digest.js';
+import { runDigest, generateDigest, sendViaEmailTo } from './digest.js';
 import { subscribe, unsubscribe } from './subscribers.js';
 import { runDailyDigests } from './daily.js';
 
@@ -60,7 +60,17 @@ app.post('/subscribe', async (req, res) => {
     return;
   }
   try {
-    await subscribe(email.toLowerCase().trim(), topics.map(String).slice(0, 20));
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanTopics = topics.map(String).slice(0, 20);
+    await subscribe(cleanEmail, cleanTopics);
+
+    const firstTopic = cleanTopics[Math.floor(Math.random() * cleanTopics.length)];
+    setTimeout(() => {
+      generateDigest(firstTopic)
+        .then(digest => sendViaEmailTo(digest, firstTopic, cleanEmail))
+        .catch(err => console.error(`First digest failed for ${cleanEmail}: ${(err as Error).message}`));
+    }, 15 * 60 * 1000);
+
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: (err as Error).message });

@@ -10,18 +10,13 @@
     :root {
       --accent-a: #818cf8;
       --accent-b: #38bdf8;
-      --accent-c: #6366f1;
-      --surface: rgba(255,255,255,0.03);
-      --border: rgba(255,255,255,0.08);
       --text-base: #e2e8f0;
       --text-muted: #64748b;
       --text-dim: #94a3b8;
       --bg: #080f1f;
     }
 
-    html, body {
-      min-height: 100%;
-    }
+    html, body { min-height: 100%; }
 
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -37,7 +32,6 @@
       overflow-x: hidden;
     }
 
-    /* ── Grid overlay ── */
     body::before {
       content: '';
       position: fixed;
@@ -50,245 +44,190 @@
       z-index: 0;
     }
 
-    /* ── Color orbs ── */
     .orb {
-      position: fixed;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 0;
-      filter: blur(80px);
+      position: fixed; border-radius: 50%;
+      pointer-events: none; z-index: 0; filter: blur(80px);
     }
+    .orb-1 { width:600px; height:600px; background:#4f46e5; opacity:.45; top:-180px; left:-180px; animation:drift1 18s ease-in-out infinite alternate; }
+    .orb-2 { width:500px; height:500px; background:#0ea5e9; opacity:.38; top:10%; right:-160px; animation:drift2 22s ease-in-out infinite alternate; }
+    .orb-3 { width:400px; height:400px; background:#7c3aed; opacity:.30; bottom:-100px; left:30%; animation:drift3 26s ease-in-out infinite alternate; }
+    .orb-center { width:700px; height:700px; background:radial-gradient(circle,#1e2a4a 0%,transparent 70%); opacity:1; top:50%; left:50%; transform:translate(-50%,-50%); filter:blur(60px); }
 
-    .orb-1 {
-      width: 600px;
-      height: 600px;
-      background: #4f46e5;
-      opacity: 0.45;
-      top: -180px;
-      left: -180px;
-      animation: drift1 18s ease-in-out infinite alternate;
-    }
-
-    .orb-2 {
-      width: 500px;
-      height: 500px;
-      background: #0ea5e9;
-      opacity: 0.38;
-      top: 10%;
-      right: -160px;
-      animation: drift2 22s ease-in-out infinite alternate;
-    }
-
-    .orb-3 {
-      width: 400px;
-      height: 400px;
-      background: #7c3aed;
-      opacity: 0.30;
-      bottom: -100px;
-      left: 30%;
-      animation: drift3 26s ease-in-out infinite alternate;
-    }
-
-    /* Central glow so the card area isn't pitch black */
-    .orb-center {
-      width: 700px;
-      height: 700px;
-      background: radial-gradient(circle, #1e2a4a 0%, transparent 70%);
-      opacity: 1;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      filter: blur(60px);
-      animation: none;
-    }
-
-    @keyframes drift1 {
-      from { transform: translate(0, 0) scale(1); }
-      to   { transform: translate(60px, 80px) scale(1.08); }
-    }
-
-    @keyframes drift2 {
-      from { transform: translate(0, 0) scale(1); }
-      to   { transform: translate(-70px, 60px) scale(1.1); }
-    }
-
-    @keyframes drift3 {
-      from { transform: translate(0, 0) scale(1); }
-      to   { transform: translate(50px, -70px) scale(0.95); }
-    }
-
-    /* ── Page enter animation ── */
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    @keyframes drift1 { from{transform:translate(0,0) scale(1)} to{transform:translate(60px,80px) scale(1.08)} }
+    @keyframes drift2 { from{transform:translate(0,0) scale(1)} to{transform:translate(-70px,60px) scale(1.1)} }
+    @keyframes drift3 { from{transform:translate(0,0) scale(1)} to{transform:translate(50px,-70px) scale(.95)} }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+    @keyframes spin { to{transform:rotate(360deg)} }
 
     main {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 480px;
+      position: relative; z-index: 1;
+      width: 100%; max-width: 480px;
       animation: fadeUp 0.6s ease both;
     }
 
-    /* ── Header ── */
-    header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
+    header { text-align: center; margin-bottom: 2rem; }
 
     .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(99,102,241,0.15);
-      border: 1px solid rgba(129,140,248,0.25);
-      border-radius: 999px;
-      padding: 0.3rem 0.9rem;
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--accent-a);
-      margin-bottom: 1.1rem;
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: rgba(99,102,241,.15);
+      border: 1px solid rgba(129,140,248,.25);
+      border-radius: 999px; padding: .3rem .9rem;
+      font-size: .72rem; font-weight: 600;
+      letter-spacing: .06em; text-transform: uppercase;
+      color: var(--accent-a); margin-bottom: 1.1rem;
     }
 
     .pulse-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
+      width: 6px; height: 6px; border-radius: 50%;
       background: var(--accent-a);
-      animation: pulse 2s ease-in-out infinite;
-      flex-shrink: 0;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: 0.4; transform: scale(0.7); }
+      animation: pulse 2s ease-in-out infinite; flex-shrink: 0;
     }
 
     header h1 {
       font-size: clamp(2.2rem, 8vw, 3rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      line-height: 1.05;
+      font-weight: 800; letter-spacing: -.02em; line-height: 1.05;
       background: linear-gradient(135deg, #e2e8f0 30%, #818cf8 70%, #38bdf8 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 0.55rem;
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; margin-bottom: .55rem;
     }
 
-    header p {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
+    header p { font-size: .9rem; color: var(--text-muted); line-height: 1.5; }
 
     /* ── Card ── */
     .card {
-      background: rgba(255,255,255,0.06);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 16px;
-      padding: 1.75rem;
+      background: rgba(255,255,255,.06);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 16px; padding: 1.75rem;
       box-shadow:
-        0 0 0 1px rgba(129,140,248,0.15),
-        0 20px 60px rgba(0,0,0,0.45),
-        0 0 100px rgba(129,140,248,0.08);
+        0 0 0 1px rgba(129,140,248,.15),
+        0 20px 60px rgba(0,0,0,.45),
+        0 0 100px rgba(129,140,248,.08);
     }
 
-    /* ── Label ── */
-    label[for="topic"] {
-      display: block;
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-dim);
-      margin-bottom: 0.45rem;
-    }
-
-    /* ── Input ── */
-    #topic {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      font-size: 1rem;
-      font-family: system-ui, sans-serif;
-      background: rgba(255,255,255,0.05);
-      color: var(--text-base);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      margin-bottom: 0.85rem;
-    }
-
-    #topic::placeholder {
-      color: #475569;
-    }
-
-    #topic:focus {
-      border-color: rgba(129,140,248,0.5);
-      box-shadow: 0 0 0 3px rgba(129,140,248,0.12);
-    }
-
-    /* ── Topic chips ── */
-    .chips {
+    /* ── Mode switcher ── */
+    .mode-switcher {
       display: flex;
-      flex-wrap: wrap;
-      gap: 0.45rem;
-      margin-bottom: 1.1rem;
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 10px;
+      padding: 3px;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    .mode-slider {
+      position: absolute;
+      top: 3px; bottom: 3px; left: 3px;
+      width: calc(50% - 3px);
+      background: linear-gradient(135deg, rgba(99,102,241,.4), rgba(56,189,248,.25));
+      border: 1px solid rgba(129,140,248,.45);
+      border-radius: 7px;
+      transition: left .25s cubic-bezier(.4,0,.2,1);
+      pointer-events: none;
+    }
+
+    .mode-slider.right { left: 50%; }
+
+    .mode-btn {
+      flex: 1; padding: .6rem;
+      font-size: .82rem; font-weight: 600; letter-spacing: .03em;
+      border: none; background: transparent; border-radius: 7px;
+      color: var(--text-muted); cursor: pointer;
+      position: relative; z-index: 1;
+      transition: color .2s;
+      display: flex; align-items: center; justify-content: center; gap: .4rem;
+    }
+
+    .mode-btn[aria-selected="true"] { color: var(--text-base); }
+    .mode-btn:focus-visible { outline: 2px solid var(--accent-a); outline-offset: 2px; }
+
+    /* ── Section panels ── */
+    .section-panel { animation: fadeIn .2s ease; }
+    .section-panel.hidden { display: none; }
+
+    /* ── Labels ── */
+    .field-label {
+      display: block;
+      font-size: .7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em;
+      color: var(--text-dim); margin-bottom: .45rem;
+    }
+
+    .label-row {
+      display: flex; align-items: baseline; gap: .5rem;
+      margin-bottom: .45rem;
+    }
+
+    .label-row .field-label { margin-bottom: 0; }
+
+    .hint { font-size: .68rem; color: var(--text-muted); font-weight: 400; }
+
+    /* ── Inputs ── */
+    #topic, #sub-email {
+      width: 100%; padding: .75rem 1rem;
+      font-size: 1rem; font-family: system-ui, sans-serif;
+      background: rgba(255,255,255,.05); color: var(--text-base);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 10px; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      margin-bottom: .85rem;
+    }
+
+    #topic::placeholder, #sub-email::placeholder { color: #475569; }
+
+    #topic:focus, #sub-email:focus {
+      border-color: rgba(129,140,248,.5);
+      box-shadow: 0 0 0 3px rgba(129,140,248,.12);
+    }
+
+    /* ── Chips ── */
+    .chips {
+      display: flex; flex-wrap: wrap;
+      gap: .45rem; margin-bottom: 1rem;
     }
 
     .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      padding: 0.3rem 0.75rem;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 999px;
-      color: var(--text-dim);
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .3rem .75rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 999px; color: var(--text-dim);
+      font-size: .8rem; cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
       user-select: none;
     }
 
     .chip:hover {
-      background: rgba(99,102,241,0.12);
-      border-color: rgba(129,140,248,0.35);
+      background: rgba(99,102,241,.12);
+      border-color: rgba(129,140,248,.35);
       color: var(--accent-a);
     }
 
-    .chip:focus-visible {
-      outline: 2px solid var(--accent-a);
-      outline-offset: 2px;
+    .chip.active {
+      background: rgba(99,102,241,.22);
+      border-color: rgba(129,140,248,.6);
+      color: var(--accent-a);
     }
+
+    .chip:focus-visible { outline: 2px solid var(--accent-a); outline-offset: 2px; }
 
     /* ── Checkbox ── */
     .checkbox-row {
-      display: flex;
-      align-items: center;
-      gap: 0.65rem;
-      margin-bottom: 1.25rem;
-      cursor: pointer;
+      display: flex; align-items: center;
+      gap: .65rem; margin-bottom: 1.25rem; cursor: pointer;
     }
 
     .checkbox-row input[type="checkbox"] {
-      appearance: none;
-      -webkit-appearance: none;
-      width: 1.1rem;
-      height: 1.1rem;
-      border: 1.5px solid rgba(255,255,255,0.2);
-      border-radius: 4px;
-      background: rgba(0,0,0,0.4);
-      cursor: pointer;
-      flex-shrink: 0;
+      appearance: none; -webkit-appearance: none;
+      width: 1.1rem; height: 1.1rem;
+      border: 1.5px solid rgba(255,255,255,.2);
+      border-radius: 4px; background: rgba(0,0,0,.4);
+      cursor: pointer; flex-shrink: 0;
       position: relative;
-      transition: border-color 0.15s, background 0.15s;
+      transition: border-color .15s, background .15s;
     }
 
     .checkbox-row input[type="checkbox"]:checked {
@@ -298,301 +237,122 @@
 
     .checkbox-row input[type="checkbox"]:checked::after {
       content: '';
-      position: absolute;
-      inset: 0;
-      margin: auto;
-      width: 5px;
-      height: 9px;
-      margin-top: 1px;
-      border: 2px solid #fff;
-      border-top: none;
-      border-left: none;
+      position: absolute; inset: 0; margin: auto;
+      width: 5px; height: 9px; margin-top: 1px;
+      border: 2px solid #fff; border-top: none; border-left: none;
       transform: rotate(45deg);
     }
 
-    .checkbox-row input[type="checkbox"]:focus-visible {
-      outline: 2px solid var(--accent-a);
-      outline-offset: 2px;
+    .checkbox-row input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent-a); outline-offset: 2px; }
+
+    .checkbox-row span { font-size: .85rem; color: var(--text-muted); user-select: none; line-height: 1.4; }
+
+    /* ── Custom topic row ── */
+    .custom-row { display: flex; gap: .5rem; margin-bottom: .75rem; }
+
+    .custom-row input {
+      flex: 1; padding: .5rem .85rem;
+      font-size: .85rem; font-family: system-ui, sans-serif;
+      background: rgba(255,255,255,.04); color: var(--text-base);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px; outline: none;
+      transition: border-color .2s;
     }
 
-    .checkbox-row span {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      user-select: none;
-      line-height: 1.4;
-    }
-
-    /* ── Button ── */
-    #run-btn {
-      width: 100%;
-      padding: 0.85rem;
-      font-size: 0.9rem;
-      font-family: system-ui, sans-serif;
-      font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      background: linear-gradient(135deg, #6366f1, #38bdf8, #6366f1);
-      background-size: 200% 100%;
-      background-position: 0% 0%;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.6rem;
-      transition: background-position 0.4s ease, opacity 0.15s, transform 0.1s;
-    }
-
-    #run-btn:hover:not(:disabled) {
-      background-position: 100% 0%;
-      transform: translateY(-1px);
-    }
-
-    #run-btn:active:not(:disabled) {
-      transform: translateY(0);
-    }
-
-    #run-btn:focus-visible {
-      outline: 2px solid var(--accent-a);
-      outline-offset: 3px;
-    }
-
-    #run-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    /* ── Spinner ── */
-    .spinner {
-      display: none;
-      width: 15px;
-      height: 15px;
-      border: 2px solid rgba(255,255,255,0.25);
-      border-top-color: #fff;
-      border-radius: 50%;
-      flex-shrink: 0;
-      animation: spin 0.7s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    #run-btn.loading .spinner {
-      display: block;
-    }
-
-    /* ── Status ── */
-    #status {
-      margin-top: 1rem;
-      font-size: 0.9rem;
-      text-align: center;
-      min-height: 1.4em;
-      color: var(--text-muted);
-      transition: color 0.2s;
-    }
-
-    #status.success {
-      color: #4ade80;
-      font-weight: 600;
-    }
-
-    #status.error {
-      color: #f87171;
-      font-weight: 600;
-    }
-
-    /* ── Footer ── */
-    footer {
-      position: relative;
-      z-index: 1;
-      margin-top: 1.75rem;
-      font-size: 0.75rem;
-      color: #1e293b;
-      text-align: center;
-      letter-spacing: 0.03em;
-    }
-
-    /* ── Subscription card ── */
-    .section-title {
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--accent-b);
-      margin-bottom: 0.3rem;
-    }
-
-    .section-sub {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 1.25rem;
-      line-height: 1.5;
-    }
-
-    .field-label {
-      display: block;
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-dim);
-      margin-bottom: 0.45rem;
-    }
-
-    .field-input {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      font-size: 1rem;
-      font-family: system-ui, sans-serif;
-      background: rgba(255,255,255,0.05);
-      color: var(--text-base);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .field-input::placeholder { color: #475569; }
-    .field-input:focus {
-      border-color: rgba(56,189,248,0.5);
-      box-shadow: 0 0 0 3px rgba(56,189,248,0.1);
-    }
-
-    .topic-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.45rem;
-      margin-top: 0.45rem;
-      margin-bottom: 1rem;
-    }
-
-    .topic-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      padding: 0.3rem 0.75rem;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 999px;
-      color: var(--text-dim);
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
-      user-select: none;
-    }
-
-    .topic-chip:hover {
-      background: rgba(14,165,233,0.1);
-      border-color: rgba(56,189,248,0.35);
-      color: var(--accent-b);
-    }
-
-    .topic-chip.active {
-      background: rgba(14,165,233,0.18);
-      border-color: rgba(56,189,248,0.6);
-      color: var(--accent-b);
-    }
-
-    .topic-chip:focus-visible { outline: 2px solid var(--accent-b); outline-offset: 2px; }
-
-    .custom-row {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.75rem;
-      margin-bottom: 0.6rem;
-    }
-
-    .custom-row .field-input { margin-bottom: 0; }
+    .custom-row input::placeholder { color: #475569; }
+    .custom-row input:focus { border-color: rgba(129,140,248,.4); }
 
     .add-btn {
-      padding: 0 1rem;
-      background: rgba(14,165,233,0.15);
-      border: 1px solid rgba(56,189,248,0.3);
-      border-radius: 10px;
-      color: var(--accent-b);
-      font-size: 1.3rem;
-      line-height: 1;
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: background 0.15s;
+      padding: .5rem .9rem;
+      background: rgba(99,102,241,.15);
+      border: 1px solid rgba(129,140,248,.3);
+      border-radius: 8px; color: var(--accent-a);
+      font-size: 1.2rem; line-height: 1;
+      cursor: pointer; flex-shrink: 0;
+      transition: background .15s;
     }
 
-    .add-btn:hover { background: rgba(14,165,233,0.28); }
-    .add-btn:focus-visible { outline: 2px solid var(--accent-b); outline-offset: 2px; }
+    .add-btn:hover { background: rgba(99,102,241,.28); }
+    .add-btn:focus-visible { outline: 2px solid var(--accent-a); outline-offset: 2px; }
 
-    .tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-      margin-bottom: 1.1rem;
-    }
+    /* ── Tags ── */
+    .tags { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
 
     .tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      padding: 0.25rem 0.65rem;
-      background: rgba(56,189,248,0.1);
-      border: 1px solid rgba(56,189,248,0.28);
-      border-radius: 999px;
-      color: var(--accent-b);
-      font-size: 0.78rem;
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .22rem .6rem;
+      background: rgba(56,189,248,.1);
+      border: 1px solid rgba(56,189,248,.28);
+      border-radius: 999px; color: var(--accent-b); font-size: .78rem;
     }
 
     .tag-remove {
-      background: none;
-      border: none;
-      color: var(--accent-b);
-      cursor: pointer;
-      font-size: 1rem;
-      padding: 0;
-      line-height: 1;
-      opacity: 0.6;
+      background: none; border: none;
+      color: var(--accent-b); cursor: pointer;
+      font-size: 1rem; padding: 0; line-height: 1; opacity: .6;
     }
 
     .tag-remove:hover { opacity: 1; }
 
-    .sub-btn {
-      width: 100%;
-      padding: 0.85rem;
-      font-size: 0.9rem;
-      font-family: system-ui, sans-serif;
-      font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
+    /* ── Buttons ── */
+    #run-btn, #subscribe-btn {
+      width: 100%; padding: .85rem;
+      font-size: .9rem; font-family: system-ui, sans-serif;
+      font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+      color: #fff; border: none; border-radius: 10px; cursor: pointer;
+    }
+
+    #run-btn {
+      background: linear-gradient(135deg, #6366f1, #38bdf8, #6366f1);
+      background-size: 200% 100%; background-position: 0% 0%;
+      display: flex; align-items: center; justify-content: center; gap: .6rem;
+      transition: background-position .4s ease, transform .1s;
+    }
+
+    #run-btn:hover:not(:disabled) { background-position: 100% 0%; transform: translateY(-1px); }
+    #run-btn:active:not(:disabled) { transform: translateY(0); }
+    #run-btn:disabled { opacity: .6; cursor: not-allowed; }
+    #run-btn:focus-visible { outline: 2px solid var(--accent-a); outline-offset: 3px; }
+
+    #subscribe-btn {
       background: linear-gradient(135deg, #0ea5e9, #6366f1);
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
+      transition: opacity .15s, transform .1s;
     }
 
-    .sub-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
-    .sub-btn:active:not(:disabled) { transform: translateY(0); }
-    .sub-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-    .sub-btn:focus-visible { outline: 2px solid var(--accent-b); outline-offset: 3px; }
+    #subscribe-btn:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+    #subscribe-btn:active:not(:disabled) { transform: translateY(0); }
+    #subscribe-btn:disabled { opacity: .6; cursor: not-allowed; }
+    #subscribe-btn:focus-visible { outline: 2px solid var(--accent-b); outline-offset: 3px; }
 
-    .sub-status {
-      margin-top: 0.75rem;
-      font-size: 0.85rem;
-      text-align: center;
-      min-height: 1.2em;
-      color: var(--text-muted);
+    /* ── Spinner ── */
+    .spinner {
+      display: none; width: 15px; height: 15px;
+      border: 2px solid rgba(255,255,255,.25);
+      border-top-color: #fff; border-radius: 50%; flex-shrink: 0;
+      animation: spin .7s linear infinite;
     }
 
-    .sub-status.success { color: #4ade80; font-weight: 600; }
-    .sub-status.error   { color: #f87171; font-weight: 600; }
+    #run-btn.loading .spinner { display: block; }
+
+    /* ── Status ── */
+    #status {
+      margin-top: 1rem; font-size: .9rem; text-align: center;
+      min-height: 1.4em; color: var(--text-muted); transition: color .2s;
+    }
+
+    #status.success { color: #4ade80; font-weight: 600; }
+    #status.error   { color: #f87171; font-weight: 600; }
+
+    /* ── Footer ── */
+    footer {
+      position: relative; z-index: 1;
+      margin-top: 1.75rem; font-size: .75rem;
+      color: #1e293b; text-align: center; letter-spacing: .03em;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Color orbs -->
   <div class="orb orb-1" aria-hidden="true"></div>
   <div class="orb orb-2" aria-hidden="true"></div>
   <div class="orb orb-3" aria-hidden="true"></div>
@@ -605,60 +365,75 @@
         Live &middot; AI-Powered &middot; Real-time
       </div>
       <h1>News Digest</h1>
-      <p>Research synthesized by Claude AI, delivered to Discord</p>
+      <p>AI-powered research, delivered to Discord &amp; your inbox</p>
     </header>
 
     <div class="card">
-      <label for="topic">Topic</label>
-      <input id="topic" type="text" placeholder="e.g. Climate Change, AI, Finance…" autocomplete="off" />
 
-      <div class="chips" role="list" aria-label="Quick topic shortcuts">
-        <button class="chip" role="listitem" data-topic="AI">🤖 AI</button>
-        <button class="chip" role="listitem" data-topic="Finance">💰 Finance</button>
-        <button class="chip" role="listitem" data-topic="Climate">🌱 Climate</button>
-        <button class="chip" role="listitem" data-topic="Science">🔬 Science</button>
-        <button class="chip" role="listitem" data-topic="Politics">🏛️ Politics</button>
-        <button class="chip" role="listitem" data-topic="Space">🚀 Space</button>
+      <!-- Mode switcher -->
+      <div class="mode-switcher" role="tablist" aria-label="Delivery mode">
+        <div class="mode-slider" id="mode-slider" aria-hidden="true"></div>
+        <button class="mode-btn" id="btn-discord" role="tab" aria-selected="true" aria-controls="section-discord">
+          💬 Discord
+        </button>
+        <button class="mode-btn" id="btn-email" role="tab" aria-selected="false" aria-controls="section-email">
+          ✉️ Email
+        </button>
       </div>
 
-      <label class="checkbox-row" for="ping-only">
-        <input type="checkbox" id="ping-only" />
-        <span>Test Discord connection only (no AI call)</span>
-      </label>
+      <!-- Discord panel -->
+      <div class="section-panel" id="section-discord" role="tabpanel" aria-labelledby="btn-discord">
+        <label class="field-label" for="topic">Topic</label>
+        <input id="topic" type="text" placeholder="e.g. Climate Change, AI, Finance…" autocomplete="off" />
 
-      <button id="run-btn">
-        <span class="spinner" aria-hidden="true"></span>
-        <span class="btn-label">Generate Digest</span>
-      </button>
+        <div class="chips" role="group" aria-label="Quick topic shortcuts">
+          <button class="chip" data-topic="AI">🤖 AI</button>
+          <button class="chip" data-topic="Finance">💰 Finance</button>
+          <button class="chip" data-topic="Climate">🌱 Climate</button>
+          <button class="chip" data-topic="Science">🔬 Science</button>
+          <button class="chip" data-topic="Politics">🏛️ Politics</button>
+          <button class="chip" data-topic="Space">🚀 Space</button>
+        </div>
+
+        <label class="checkbox-row" for="ping-only">
+          <input type="checkbox" id="ping-only" />
+          <span>Test Discord connection only (no AI call)</span>
+        </label>
+
+        <button id="run-btn">
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="btn-label">Generate Digest</span>
+        </button>
+      </div>
+
+      <!-- Email panel -->
+      <div class="section-panel hidden" id="section-email" role="tabpanel" aria-labelledby="btn-email">
+        <label class="field-label" for="sub-email">Your email</label>
+        <input id="sub-email" type="email" placeholder="you@example.com" autocomplete="email" />
+
+        <div class="label-row">
+          <span class="field-label">Topics</span>
+          <span class="hint">select one or more — rotated daily</span>
+        </div>
+        <div class="chips" role="group" aria-label="Subscription topic selection">
+          <button class="chip sub-chip" data-topic="AI" aria-pressed="false">🤖 AI</button>
+          <button class="chip sub-chip" data-topic="Finance" aria-pressed="false">💰 Finance</button>
+          <button class="chip sub-chip" data-topic="Climate" aria-pressed="false">🌱 Climate</button>
+          <button class="chip sub-chip" data-topic="Science" aria-pressed="false">🔬 Science</button>
+          <button class="chip sub-chip" data-topic="Politics" aria-pressed="false">🏛️ Politics</button>
+          <button class="chip sub-chip" data-topic="Space" aria-pressed="false">🚀 Space</button>
+        </div>
+
+        <div class="custom-row">
+          <input id="custom-topic-input" type="text" placeholder="Add a custom topic…" />
+          <button id="add-topic-btn" class="add-btn" aria-label="Add topic">+</button>
+        </div>
+        <div id="custom-tags" class="tags"></div>
+
+        <button id="subscribe-btn">Subscribe</button>
+      </div>
 
       <div id="status" role="status" aria-live="polite"></div>
-    </div>
-    <div class="card" style="margin-top:1.25rem;">
-      <div class="section-title">Daily Email Subscription</div>
-      <p class="section-sub">Get a digest each morning. Topics rotate randomly from your picks.</p>
-
-      <label for="sub-email" class="field-label">Email Address</label>
-      <input id="sub-email" class="field-input" type="email" placeholder="you@example.com" autocomplete="email" />
-
-      <label class="field-label" style="margin-top:1.1rem;">Topics</label>
-      <div class="topic-grid" role="group" aria-label="Topic selection">
-        <button class="topic-chip" data-topic="AI" aria-pressed="false">🤖 AI</button>
-        <button class="topic-chip" data-topic="Finance" aria-pressed="false">💰 Finance</button>
-        <button class="topic-chip" data-topic="Climate" aria-pressed="false">🌱 Climate</button>
-        <button class="topic-chip" data-topic="Science" aria-pressed="false">🔬 Science</button>
-        <button class="topic-chip" data-topic="Politics" aria-pressed="false">🏛️ Politics</button>
-        <button class="topic-chip" data-topic="Space" aria-pressed="false">🚀 Space</button>
-      </div>
-
-      <div class="custom-row">
-        <input id="custom-topic-input" class="field-input" type="text" placeholder="Add a custom topic…" />
-        <button id="add-topic-btn" class="add-btn" aria-label="Add topic">+</button>
-      </div>
-
-      <div id="custom-tags" class="tags"></div>
-
-      <button id="subscribe-btn" class="sub-btn">Subscribe</button>
-      <div id="sub-status" class="sub-status" role="status" aria-live="polite"></div>
     </div>
   </main>
 
