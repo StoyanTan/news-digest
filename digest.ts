@@ -116,7 +116,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
 // Core: generate digest
 // ---------------------------------------------------------------------------
 
-async function generateDigest(topic: string): Promise<string> {
+export async function generateDigest(topic: string): Promise<string> {
   console.log(`\n🔍  Searching for top "${topic}" article from the last 24 hours…`);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -236,8 +236,36 @@ function saveToFile(digest: string, topic: string, filePath: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// Public API (used by server.ts)
+// Public API (used by server.ts / daily.ts)
 // ---------------------------------------------------------------------------
+
+export async function sendViaEmailTo(digest: string, topic: string, recipientEmail: string): Promise<void> {
+  const senderEmail = process.env.GMAIL_EMAIL;
+  const password = process.env.GMAIL_PASSWORD;
+  if (!senderEmail) throw new Error('GMAIL_EMAIL is not set.');
+  if (!password) throw new Error('GMAIL_PASSWORD is not set.');
+
+  const serviceUrl = process.env.RENDER_EXTERNAL_URL ?? process.env.SERVICE_URL ?? '';
+  const unsubToken = Buffer.from(recipientEmail).toString('base64url');
+  const unsubLink = serviceUrl ? `${serviceUrl}/unsubscribe?token=${unsubToken}` : '';
+
+  const { createTransport: makeTransport } = await import('nodemailer');
+  const transporter = makeTransport({ service: 'gmail', auth: { user: senderEmail, pass: password } });
+  const htmlContent = `<html><body style="font-family:sans-serif;max-width:700px;margin:auto;padding:1rem;">
+    <h1 style="color:#1a1a2e;">📰 Daily Digest: ${escapeHtml(topic)}</h1>
+    <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;">${escapeHtml(digest)}</pre>
+    <hr/><p style="color:#888;font-size:12px;">Powered by Claude AI${unsubLink ? ` &middot; <a href="${unsubLink}">Unsubscribe</a>` : ''}</p>
+  </body></html>`;
+
+  await transporter.sendMail({
+    from: senderEmail,
+    to: recipientEmail,
+    subject: `📰 Daily Digest: ${topic}`,
+    text: digest + (unsubLink ? `\n\nUnsubscribe: ${unsubLink}` : ''),
+    html: htmlContent,
+  });
+  console.log(`✅  Email sent to ${recipientEmail}`);
+}
 
 export async function runDigest(topic: string): Promise<void> {
   const digest = await generateDigest(topic);

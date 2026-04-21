@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
+    "@supabase/supabase-js": "latest",
     "express": "latest",
     "nodemailer": "latest",
     "tsx": "^4.21.0"

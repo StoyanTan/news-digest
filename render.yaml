@@ -12,9 +12,32 @@ services:
         sync: false
       - key: DISCORD_WEBHOOK_URL
         sync: false
-      - key: GMAIL_USER
+      - key: GMAIL_EMAIL
         sync: false
-      - key: GMAIL_APP_PASSWORD
+      - key: GMAIL_PASSWORD
         sync: false
-      - key: GMAIL_TO
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  - type: cron
+    name: daily-digest-cron
+    runtime: node
+    plan: free
+    schedule: "0 8 * * *"
+    buildCommand: npm install
+    startCommand: npx tsx daily.ts
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GMAIL_EMAIL
+        sync: false
+      - key: GMAIL_PASSWORD
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
         sync: false
