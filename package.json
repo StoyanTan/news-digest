@@ -8,7 +8,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "npx tsx digest.ts",
+    "start": "npx tsx server.ts",
     "test": "npx tsx digest.ts --smoke",
     "setup": "npx tsx setup.ts",
     "build": "tsc --noEmit",
