@@ -65,11 +65,9 @@ app.post('/subscribe', async (req, res) => {
     await subscribe(cleanEmail, cleanTopics);
 
     const firstTopic = cleanTopics[Math.floor(Math.random() * cleanTopics.length)];
-    setTimeout(() => {
-      generateDigest(firstTopic)
-        .then(digest => sendViaEmailTo(digest, firstTopic, cleanEmail))
-        .catch(err => console.error(`First digest failed for ${cleanEmail}: ${(err as Error).message}`));
-    }, 15 * 60 * 1000);
+    generateDigest(firstTopic)
+      .then(digest => sendViaEmailTo(digest, firstTopic, cleanEmail))
+      .catch(err => console.error(`First digest failed for ${cleanEmail}: ${(err as Error).message}`));
 
     res.json({ ok: true });
   } catch (err) {
