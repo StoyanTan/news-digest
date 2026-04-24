@@ -208,7 +208,12 @@ async function sendViaEmailWithTopic(digest: string, topic: string): Promise<voi
   if (!password) throw new Error('GMAIL_PASSWORD is not set in your environment.');
 
   console.log('📨  Sending via Gmail…');
-  const transporter = createTransport({ service: 'gmail', auth: { user: email, pass: password } });
+  const transporter = createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: { user: email, pass: password },
+  });
   const htmlContent = `
     <html><body style="font-family: sans-serif; max-width: 700px; margin: auto;">
       <h1 style="color:#1a1a2e;">📰 Daily Digest: ${escapeHtml(topic)}</h1>
@@ -250,7 +255,12 @@ export async function sendViaEmailTo(digest: string, topic: string, recipientEma
   const unsubLink = serviceUrl ? `${serviceUrl}/unsubscribe?token=${unsubToken}` : '';
 
   const { createTransport: makeTransport } = await import('nodemailer');
-  const transporter = makeTransport({ service: 'gmail', auth: { user: senderEmail, pass: password } });
+  const transporter = makeTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: { user: senderEmail, pass: password },
+  });
   const htmlContent = `<html><body style="font-family:sans-serif;max-width:700px;margin:auto;padding:1rem;">
     <h1 style="color:#1a1a2e;">📰 Daily Digest: ${escapeHtml(topic)}</h1>
     <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;">${escapeHtml(digest)}</pre>
