@@ -98,6 +98,26 @@ function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function digestToHtml(digest: string): string {
+  const sep = digest.indexOf('\n---');
+  const body = (sep !== -1 ? digest.slice(0, sep) : digest).trim();
+  return body.split('\n').reduce((html, line) => {
+    const t = line.trim();
+    if (!t) return html;
+    const titleMatch = t.match(/^\*\*(.+?)\*\*$/);
+    if (titleMatch) return html + `<h2 style="color:#1a1a2e;margin:0 0 1rem 0;">${escapeHtml(titleMatch[1])}</h2>`;
+    const fieldMatch = t.match(/^(Source|URL|Summary|Why it matters):\s*(.+)$/);
+    if (fieldMatch) {
+      const [, key, value] = fieldMatch;
+      const val = key === 'URL'
+        ? `<a href="${escapeHtml(value)}" style="color:#5865F2;">${escapeHtml(value)}</a>`
+        : escapeHtml(value);
+      return html + `<p style="margin:0.6rem 0;"><strong>${escapeHtml(key)}:</strong> ${val}</p>`;
+    }
+    return html + `<p style="margin:0.6rem 0;">${escapeHtml(t)}</p>`;
+  }, '');
+}
+
 async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -261,17 +281,22 @@ export async function sendViaEmailTo(digest: string, topic: string, recipientEma
     secure: true,
     auth: { user: senderEmail, pass: password },
   });
+
+  const footerSep = digest.indexOf('\n---');
+  const plainText = (footerSep !== -1 ? digest.slice(0, footerSep) : digest).trim().replace(/\*\*/g, '');
+  const bodyHtml = digestToHtml(digest);
   const htmlContent = `<html><body style="font-family:sans-serif;max-width:700px;margin:auto;padding:1rem;">
-    <h1 style="color:#1a1a2e;">📰 Daily Digest: ${escapeHtml(topic)}</h1>
-    <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;">${escapeHtml(digest)}</pre>
-    <hr/><p style="color:#888;font-size:12px;">Powered by Claude AI${unsubLink ? ` &middot; <a href="${unsubLink}">Unsubscribe</a>` : ''}</p>
+    <h1 style="color:#1a1a2e;border-bottom:2px solid #eee;padding-bottom:0.5rem;">📰 Daily Digest: ${escapeHtml(topic)}</h1>
+    ${bodyHtml}
+    <hr style="margin-top:2rem;border:none;border-top:1px solid #eee;"/>
+    ${unsubLink ? `<p style="color:#aaa;font-size:12px;"><a href="${unsubLink}" style="color:#aaa;">Unsubscribe</a></p>` : ''}
   </body></html>`;
 
   await transporter.sendMail({
     from: senderEmail,
     to: recipientEmail,
     subject: `📰 Daily Digest: ${topic}`,
-    text: digest + (unsubLink ? `\n\nUnsubscribe: ${unsubLink}` : ''),
+    text: plainText + (unsubLink ? `\n\nUnsubscribe: ${unsubLink}` : ''),
     html: htmlContent,
   });
   console.log(`✅  Email sent to ${recipientEmail}`);
